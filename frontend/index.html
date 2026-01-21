@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseAI - Smart Expense Tracker</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+    
+    <nav class="navbar navbar-dark bg-gradient sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="fas fa-wallet me-2"></i>ExpenseAI
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-cyan text-dark fw-bold" id="navTotal">₹0</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid main-wrapper">
+        <div class="row h-100">
+            
+            <nav class="col-12 col-md-3 col-lg-2 sidebar d-flex flex-column">
+                <div class="nav-menu mt-4">
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="add-expense">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Add Expense</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="transactions">
+                        <i class="fas fa-list"></i>
+                        <span>Transactions</span>
+                    </a>
+                </div>
+            </nav>
+
+            <main class="col-12 col-md-9 col-lg-10 content-area">
+                
+                <!-- Dashboard Page -->
+                <div class="page-section active" id="dashboard-page">
+                    <div class="page-title">
+                        <h1>Dashboard</h1>
+                        <p>Your spending overview</p>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stats-row">
+                        <div class="stat-card stat-card-1">
+                            <div class="stat-icon">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">This Month</p>
+                                <p class="stat-value" id="thisMonth">₹0</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-2">
+                            <div class="stat-icon">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Total Count</p>
+                                <p class="stat-value" id="totalCount">0</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-3">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Daily Avg</p>
+                                <p class="stat-value" id="dailyAvg">₹0</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-4">
+                            <div class="stat-icon">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Top Category</p>
+                                <p class="stat-value" id="topCat">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Container -->
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <div class="chart-title">
+                                <h5>Spending by Category</h5>
+                                <p>Distribution of your expenses</p>
+                            </div>
+                            <div class="chart-box">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-title">
+                                <h5 id="monthChartTitle">Spending by Month</h5>
+                                <p id="monthChartDesc">Click a bar to see daily breakdown</p>
+                            </div>
+                            <div class="chart-box">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                            <button class="btn-back-chart" id="backFromDaily" style="display: none;">
+                                <i class="fas fa-arrow-left"></i> Back to Months
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Expense Page -->
+                <div class="page-section" id="add-expense-page">
+                    <div class="page-title">
+                        <h1>Add Expense</h1>
+                        <p>Record your spending quickly</p>
+                    </div>
+
+                    <div class="form-wrapper">
+                        <form id="expenseForm" class="expense-form">
+                            <div class="form-group">
+                                <label class="form-label">Amount (₹)</label>
+                                <input type="number" class="form-control" id="amount" placeholder="0.00" step="0.01" min="0" required>
+                                <small id="amountErr" class="text-danger d-none"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Category</label>
+                                <div class="category-grid">
+                                    <div>
+                                        <input type="radio" id="food" name="category" value="Food">
+                                        <label for="food" class="cat-btn"><i class="fas fa-utensils"></i> Food</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="transport" name="category" value="Transport">
+                                        <label for="transport" class="cat-btn"><i class="fas fa-car"></i> Transport</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="utilities" name="category" value="Utilities">
+                                        <label for="utilities" class="cat-btn"><i class="fas fa-lightbulb"></i> Utilities</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="entertainment" name="category" value="Entertainment">
+                                        <label for="entertainment" class="cat-btn"><i class="fas fa-film"></i> Entertainment</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="health" name="category" value="Health">
+                                        <label for="health" class="cat-btn"><i class="fas fa-heart"></i> Health</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="shopping" name="category" value="Shopping">
+                                        <label for="shopping" class="cat-btn"><i class="fas fa-shopping-bag"></i> Shopping</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="education" name="category" value="Education">
+                                        <label for="education" class="cat-btn"><i class="fas fa-book"></i> Education</label>
+                                    </div>
+                                    <div>
+                                        <input type="radio" id="other" name="category" value="Other">
+                                        <label for="other" class="cat-btn"><i class="fas fa-ellipsis-h"></i> Other</label>
+                                    </div>
+                                </div>
+                                <small id="categoryErr" class="text-danger d-none d-block"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control" id="description" rows="3" placeholder="What did you spend on?"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="date" required>
+                                <small id="dateErr" class="text-danger d-none"></small>
+                            </div>
+
+                            <button type="submit" class="btn-submit">
+                                <i class="fas fa-plus"></i> Add Expense
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Transactions Page -->
+                <div class="page-section" id="transactions-page">
+                    <div class="page-title">
+                        <h1>Transactions</h1>
+                        <p>Manage your expenses</p>
+                    </div>
+
+                    <div id="monthsView">
+                        <div class="months-grid" id="monthsGrid">
+                            <!-- Months will be generated here -->
+                        </div>
+                    </div>
+
+                    <div id="daysView" style="display: none;">
+                        <button class="btn-back-page" id="backToMonths">
+                            <i class="fas fa-arrow-left"></i> Back to Months
+                        </button>
+                        <h4 id="selectedMonthTitle" class="mt-3">-</h4>
+                        <p id="selectedMonthTotal" class="text-muted">Total: ₹0</p>
+                        <div class="days-grid" id="daysGrid">
+                            <!-- Days will be generated here -->
+                        </div>
+                    </div>
+
+                    <div id="transactionsView" style="display: none;">
+                        <button class="btn-back-page" id="backToDays">
+                            <i class="fas fa-arrow-left"></i> Back to Days
+                        </button>
+                        <h4 id="selectedDateTitle" class="mt-3">-</h4>
+                        <p id="selectedDateTotal" class="text-muted">Total: ₹0</p>
+                        <div class="transactions-grid" id="transactionsGrid">
+                            <!-- Transactions will be generated here -->
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert">
+            <div class="toast-body d-flex align-items-center gap-2">
+                <i id="toastIcon" class="fas"></i>
+                <span id="toastMsg"></span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="spinner-overlay d-none">
+        <div class="spinner-border text-info" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

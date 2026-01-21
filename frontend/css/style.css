@@ -1,0 +1,358 @@
+:root {
+    --primary: #00D4FF;
+    --secondary: #FF6B9D;
+    --success: #00E5A0;
+    --danger: #FF6B6B;
+    --warning: #FFB84D;
+    --dark-bg: #0F1419;
+    --dark-bg-secondary: #1A1F2E;
+    --dark-bg-tertiary: #252B3A;
+    --text-primary: #FFFFFF;
+    --text-secondary: #B0B9C3;
+    --text-tertiary: #7A8593;
+    --card-bg: rgba(26, 31, 46, 0.85);
+    --border-color: rgba(0, 212, 255, 0.12);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body { height: 100%; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+/* ---------------- NAVBAR ---------------- */
+.navbar {
+    background: linear-gradient(90deg, rgba(15,20,25,.95), rgba(26,31,46,.95)) !important;
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    height: 60px;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+    color: var(--primary) !important;
+    font-weight: 800 !important;
+}
+
+.bg-cyan {
+    background: var(--primary) !important;
+    font-size: .85rem;
+    padding: 4px 10px;
+}
+
+/* ---------------- LAYOUT ---------------- */
+.main-wrapper { height: calc(100vh - 60px); }
+
+.sidebar {
+    background: linear-gradient(180deg, var(--dark-bg-secondary), var(--dark-bg-tertiary));
+    border-right: 1px solid var(--border-color);
+    padding: 1rem;
+}
+
+.nav-menu { display: flex; flex-direction: column; gap: .4rem; }
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: background .2s ease, color .2s ease;
+    font-weight: 600;
+}
+
+.nav-item:hover {
+    color: var(--primary);
+    background: rgba(0,212,255,.1);
+}
+
+.nav-item.active {
+    color: var(--primary);
+    background: rgba(0,212,255,.18);
+}
+
+/* ---------------- CONTENT ---------------- */
+.content-area {
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* ---------------- PAGE ---------------- */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+.page-title h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+.page-title p {
+    color: var(--text-secondary);
+    font-size: .85rem;
+}
+
+/* ---------------- STATS ---------------- */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    padding: 1.2rem;
+    border-radius: 12px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid rgba(255,255,255,.1);
+    min-height: 110px;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,212,255,.15);
+}
+
+.stat-card-1 { background: linear-gradient(135deg,#FF6B6B,#FF8787); }
+.stat-card-2 { background: linear-gradient(135deg,#4ECDC4,#45B7AA); }
+.stat-card-3 { background: linear-gradient(135deg,#FFB84D,#FFA500); }
+.stat-card-4 { background: linear-gradient(135deg,#A78BFA,#9D5FFF); }
+
+.stat-icon { font-size: 1.8rem; }
+.stat-label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    font-weight: 700;
+}
+.stat-value { font-size: 1.4rem; font-weight: 800; }
+
+/* ---------------- CHARTS ---------------- */
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(420px,1fr));
+    gap: 1.5rem;
+}
+
+.chart-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.3rem;
+    transition: border-color .2s ease, box-shadow .2s ease;
+    will-change: opacity;
+}
+
+.chart-card:hover {
+    border-color: rgba(0,212,255,.4);
+    box-shadow: 0 10px 30px rgba(0,212,255,.12);
+}
+
+.chart-title h5 {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+.chart-title p {
+    color: var(--text-secondary);
+    font-size: .8rem;
+}
+
+/* 🔥 FIXED chart container */
+.chart-box {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    max-height: 360px;
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.chart-box canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+}
+
+/* ---------------- BUTTONS ---------------- */
+.btn-submit {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    border: none;
+    color: var(--dark-bg);
+    border-radius: 8px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0,212,255,.35);
+}
+
+.btn-back-chart,
+.btn-back-page {
+    background: rgba(0,212,255,.1);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background .2s ease;
+}
+
+.btn-back-chart:hover,
+.btn-back-page:hover {
+    background: rgba(0,212,255,.2);
+}
+
+/* ---------------- FORMS ---------------- */
+.form-wrapper { max-width: 550px; margin: 0 auto; }
+
+.expense-form {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.form-label { font-weight: 700; }
+
+.form-control {
+    background: rgba(255,255,255,.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 .15rem rgba(0,212,255,.25);
+}
+
+/* ---------------- CATEGORY GRID ---------------- */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(95px,1fr));
+    gap: 10px;
+}
+
+.category-grid input { display: none; }
+
+.cat-btn {
+    padding: 10px;
+    text-align: center;
+    background: rgba(255,255,255,.05);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.cat-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.category-grid input:checked + .cat-btn {
+    background: linear-gradient(135deg,var(--primary),rgba(0,212,255,.6));
+    border-color: var(--primary);
+    color: white;
+}
+
+/* ---------------- MONTH/DAY CARDS ---------------- */
+.months-grid,.days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill,minmax(140px,1fr));
+    gap: 1rem;
+}
+
+.month-card,.day-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.month-card:hover,.day-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0,212,255,.15);
+}
+
+/* ---------------- TRANSACTIONS ---------------- */
+.transactions-grid {
+    display: grid;
+    gap: .8rem;
+}
+
+.transaction-card {
+    background: var(--card-bg);
+    border-left: 3px solid var(--primary);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.transaction-card:hover {
+    transform: translateX(3px);
+    box-shadow: 0 6px 18px rgba(0,212,255,.15);
+}
+
+/* ---------------- TOAST ---------------- */
+.toast {
+    background: rgba(26,31,46,.95);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+}
+
+/* ---------------- SPINNER ---------------- */
+.spinner-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* ---------------- RESPONSIVE ---------------- */
+@media(max-width:1200px){
+    .charts-container{grid-template-columns:1fr;}
+}
+
+@media(max-width:768px){
+    .sidebar{display:none;}
+    .stats-row{grid-template-columns:repeat(2,1fr);}
+    .chart-box{min-height:240px;}
+}
+
+@media(max-width:480px){
+    .stats-row{grid-template-columns:1fr;}
+    .chart-box{min-height:200px;}
+}
