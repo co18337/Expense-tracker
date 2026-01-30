@@ -39,6 +39,8 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.env.*
+*.env
 
 # Node (if we add frontend build later)
 node_modules/

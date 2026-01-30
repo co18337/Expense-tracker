@@ -422,3 +422,184 @@ def get_category_stats():
             'success': False,
             'message': f'Error retrieving statistics: {str(e)}'
         }), 500
+
+# ===== AI CHAT ENDPOINTS =====
+
+from app.ai_service import create_expense_extractor
+
+@api_bp.route('/chat', methods=['POST'])
+def chat_with_ai():
+    try:
+        data = request.get_json()
+
+        message_raw = data.get('message', '').strip()
+        message = message_raw.lower()
+
+        if not message:
+            return jsonify({
+                'success': False,
+                'message': 'Please say something!'
+            }), 400
+
+        # ✅ HANDLE YES / NO FIRST
+        if message in ['yes', 'y', 'confirm', 'save']:
+            return jsonify({
+                'success': True,
+                'type': 'confirmation',
+                'action': 'save'
+            }), 200
+
+        if message in ['no', 'n', 'cancel']:
+            return jsonify({
+                'success': True,
+                'type': 'confirmation',
+                'action': 'cancel'
+            }), 200
+
+        # 👉 ONLY NOW call AI
+        extractor = create_expense_extractor()
+        extracted = extractor.extract_expense(message_raw)
+
+        if extracted.get('error'):
+            return jsonify({
+                'success': False,
+                'message': extracted['error']
+            }), 400
+
+        if not extracted.get('is_valid'):
+            clarification = extractor.ask_clarification(extracted)
+            return jsonify({
+                'success': True,
+                'needs_clarification': True,
+                'extracted': extracted,
+                'message': clarification
+            }), 200
+
+        return jsonify({
+            'success': True,
+            'needs_confirmation': True,
+            'extracted': extracted,
+            'message': (
+                f"Got it! You spent ₹{extracted['amount']} on "
+                f"{extracted.get('description', extracted['category'])} "
+                f"on {extracted['date']}. Correct?"
+            )
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/chat/confirm', methods=['POST'])
+def confirm_expense():
+    """
+    POST /api/chat/confirm
+    
+    What: User confirms extracted expense and we save it
+    Why: Final step before adding to database
+    
+    Expected JSON:
+    {
+        "amount": 500,
+        "category": "Food",
+        "description": "Pizza",
+        "date": "2025-12-27"
+    }
+    
+    Returns: Confirmation with saved expense
+    Status: 201 or 400
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate
+        if not all(k in data for k in ['amount', 'category', 'date']):
+            return jsonify({
+                'success': False,
+                'message': 'Missing required fields'
+            }), 400
+        
+        # Create and save expense
+        expense_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+
+        new_expense = Expense(
+            amount=float(data['amount']),
+            category=data['category'],
+            description=data.get('description', ''),
+            date=expense_date   # ✅ Python date object
+        )
+
+        
+        db.session.add(new_expense)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f"✅ Expense saved! ₹{data['amount']} added to {data['category']}",
+            'data': new_expense.to_dict()
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error saving expense: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/chat/recurring', methods=['GET'])
+def get_recurring_suggestions():
+    """
+    GET /api/chat/recurring
+    
+    What: Detects recurring expense patterns
+    Why: Suggest "You usually spend ~500 on food every Friday"
+    
+    Returns: List of recurring patterns
+    Status: 200
+    """
+    try:
+        extractor = create_expense_extractor()
+        patterns = extractor.detect_recurring()
+        
+        return jsonify({
+            'success': True,
+            'patterns': patterns,
+            'message': f'Found {len(patterns)} recurring patterns' if patterns else 'No recurring patterns detected yet'
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
+
+
+@api_bp.route('/chat/summary', methods=['GET'])
+def get_expense_summary():
+    """
+    GET /api/chat/summary
+    
+    What: Quick summary of today's expenses
+    Why: Users want daily insight without opening dashboard
+    
+    Returns: Formatted summary text
+    Status: 200
+    """
+    try:
+        extractor = create_expense_extractor()
+        summary = extractor.suggest_expense_summary()
+        
+        return jsonify({
+            'success': True,
+            'summary': summary
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500

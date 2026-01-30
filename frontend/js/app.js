@@ -13,27 +13,27 @@ const DOM = {
     form: document.getElementById('expenseForm'),
     dateInput: document.getElementById('date'),
     amountInput: document.getElementById('amount'),
-    
+
     thisMonth: document.getElementById('thisMonth'),
     totalCount: document.getElementById('totalCount'),
     dailyAvg: document.getElementById('dailyAvg'),
     topCat: document.getElementById('topCat'),
-    
+
     categoryChart: document.getElementById('categoryChart'),
     monthlyChart: document.getElementById('monthlyChart'),
-    
+
     monthChartTitle: document.getElementById('monthChartTitle'),
     monthChartDesc: document.getElementById('monthChartDesc'),
     backFromDaily: document.getElementById('backFromDaily'),
-    
+
     monthsGrid: document.getElementById('monthsGrid'),
     daysGrid: document.getElementById('daysGrid'),
     transactionsGrid: document.getElementById('transactionsGrid'),
-    
+
     monthsView: document.getElementById('monthsView'),
     daysView: document.getElementById('daysView'),
     transactionsView: document.getElementById('transactionsView'),
-    
+
     navTotal: document.getElementById('navTotal'),
     toast: document.getElementById('toast'),
     loadingSpinner: document.getElementById('loadingSpinner')
@@ -71,29 +71,29 @@ function attachEvents() {
             switchPage(page);
         });
     });
-    
+
     DOM.form.addEventListener('submit', addExpense);
-    
+
     document.getElementById('backToMonths')?.addEventListener('click', () => {
         DOM.monthsView.style.display = 'block';
         DOM.daysView.style.display = 'none';
     });
-    
+
     document.getElementById('backToDays')?.addEventListener('click', () => {
         DOM.daysView.style.display = 'block';
         DOM.transactionsView.style.display = 'none';
     });
-    
+
     DOM.backFromDaily.addEventListener('click', goBackToMonthlyChart);
 }
 
 function switchPage(page) {
     DOM.pages.forEach(p => p.classList.remove('active'));
     document.getElementById(`${page}-page`).classList.add('active');
-    
+
     DOM.navItems.forEach(n => n.classList.remove('active'));
     document.querySelector(`[data-page="${page}"]`).classList.add('active');
-    
+
     if (page === 'dashboard') {
         renderDashboard();
     } else if (page === 'transactions') {
@@ -102,12 +102,12 @@ function switchPage(page) {
 }
 
 async function apiCall(method, endpoint, data = null) {
-    const options = { 
-        method, 
-        headers: { 'Content-Type': 'application/json' } 
+    const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' }
     };
     if (data) options.body = JSON.stringify(data);
-    
+
     try {
         const res = await fetch(`${API}${endpoint}`, options);
         const result = await res.json();
@@ -122,7 +122,7 @@ async function apiCall(method, endpoint, data = null) {
 async function addExpense(e) {
     e.preventDefault();
     clearErrors();
-    
+
     const cat = document.querySelector('input[name="category"]:checked');
     const data = {
         amount: parseFloat(DOM.amountInput.value),
@@ -130,9 +130,9 @@ async function addExpense(e) {
         description: document.getElementById('description').value,
         date: DOM.dateInput.value
     };
-    
+
     if (!validate(data)) return;
-    
+
     try {
         showLoading(true);
         await apiCall('POST', '/expenses', data);
@@ -175,11 +175,11 @@ function updateStats() {
         const d = new Date(e.date);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
-    
+
     const thisMonthTotal = thisMonthExp.reduce((s, e) => s + e.amount, 0);
     DOM.thisMonth.textContent = `₹${thisMonthTotal.toFixed(2)}`;
     DOM.totalCount.textContent = state.expenses.length;
-    
+
     let dailyAvgVal = 0;
     if (state.expenses.length > 0) {
         const days = new Set(state.expenses.map(e => e.date)).size;
@@ -187,7 +187,7 @@ function updateStats() {
         dailyAvgVal = total / days;
     }
     DOM.dailyAvg.textContent = `₹${dailyAvgVal.toFixed(2)}`;
-    
+
     const cats = {};
     state.expenses.forEach(e => {
         cats[e.category] = (cats[e.category] || 0) + e.amount;
@@ -201,11 +201,11 @@ function renderCategoryChart() {
     state.expenses.forEach(e => {
         cats[e.category] = (cats[e.category] || 0) + e.amount;
     });
-    
+
     if (state.charts.category) state.charts.category.destroy();
-    
+
     const colors = ['#FF6B6B', '#4ECDC4', '#FFB84D', '#A78BFA', '#FF85A1', '#00D4FF', '#6BCB77', '#FFD93D'];
-    
+
     state.charts.category = new Chart(DOM.categoryChart, {
         type: 'doughnut',
         data: {
@@ -226,43 +226,43 @@ function renderCategoryChart() {
             plugins: {
                 legend: {
                     position: 'bottom',
-                    labels: { 
-                        color: '#B0B9C3', 
+                    labels: {
+                        color: '#B0B9C3',
                         font: { size: 11, weight: 600 },
                         boxWidth: 12
                     }
                 }
             }
         }
-        
+
     });
 }
 
 function renderMonthlyChart() {
     const months = {};
     const now = new Date();
-    
+
     for (let i = 11; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
         months[key] = 0;
     }
-    
+
     state.expenses.forEach(e => {
         const d = new Date(e.date);
         const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
         if (key in months) months[key] += e.amount;
     });
-    
+
     if (state.charts.monthly) state.charts.monthly.destroy();
-    
+
     const ctx = DOM.monthlyChart.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(0, 212, 255, 0.8)');
     gradient.addColorStop(1, 'rgba(78, 205, 196, 0.4)');
-    
+
     const monthKeys = Object.keys(months);
-    
+
     state.charts.monthly = new Chart(DOM.monthlyChart, {
         type: 'bar',
         data: {
@@ -316,7 +316,7 @@ function showDailyBreakdown(monthKey) {
     const [month, year] = monthKey.split(' ');
     const monthNum = new Date(`${month} 1, ${year}`).getMonth();
     const yearNum = parseInt(year);
-    
+
     const dayData = {};
     state.expenses.forEach(e => {
         const d = new Date(e.date);
@@ -325,32 +325,32 @@ function showDailyBreakdown(monthKey) {
             dayData[day] = (dayData[day] || 0) + e.amount;
         }
     });
-    
+
     state.selectedMonth = monthKey;
     const total = Object.values(dayData).reduce((a, b) => a + b, 0);
-    
+
     // Update title immediately
     DOM.monthChartTitle.textContent = `Daily Breakdown - ${monthKey}`;
     DOM.monthChartDesc.textContent = `Total: ₹${total.toFixed(2)}`;
     DOM.backFromDaily.style.display = 'inline-block';
     state.viewingDaily = true;
-    
+
     // Destroy old chart properly
     if (state.charts.monthly) {
         state.charts.monthly.destroy();
         state.charts.monthly = null;
     }
-    
-    
+
+
     // Create new daily chart - fresh canvas
     const ctx = DOM.monthlyChart.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(255, 107, 107, 0.8)');
     gradient.addColorStop(1, 'rgba(255, 133, 161, 0.4)');
-    
+
     const days = Object.keys(dayData).sort((a, b) => parseInt(a) - parseInt(b));
     const values = days.map(d => dayData[d]);
-    
+
     state.charts.monthly = new Chart(DOM.monthlyChart, {
         type: 'bar',
         data: {
@@ -400,12 +400,12 @@ function showDailyBreakdown(monthKey) {
 function goBackToMonthlyChart() {
     state.viewingDaily = false;
     DOM.backFromDaily.style.display = 'none';
-    
+
     // Fade out chart
     const chartCard = DOM.monthlyChart.closest('.chart-card');
     chartCard.style.opacity = '0';
     chartCard.style.transform = 'scale(0.95)';
-    
+
     setTimeout(() => {
         DOM.monthChartTitle.textContent = 'Spending by Month';
         DOM.monthChartDesc.textContent = 'Click a bar to see daily breakdown';
@@ -413,8 +413,8 @@ function goBackToMonthlyChart() {
             state.charts.monthly.destroy();
         }
         renderMonthlyChart();
-        
-        
+
+
         // Fade in
         chartCard.style.opacity = '1';
         chartCard.style.transform = 'scale(1)';
@@ -426,19 +426,19 @@ function renderTransactions() {
     DOM.monthsView.style.display = 'block';
     DOM.daysView.style.display = 'none';
     DOM.transactionsView.style.display = 'none';
-    
+
     const months = {};
     state.expenses.forEach(e => {
         const d = new Date(e.date);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
         months[key] = (months[key] || 0) + e.amount;
     });
-    
+
     DOM.monthsGrid.innerHTML = '';
     Object.entries(months).sort().reverse().forEach(([key, total]) => {
         const [year, month] = key.split('-');
         const name = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-        
+
         const div = document.createElement('div');
         div.className = 'month-card';
         div.innerHTML = `<div class="month-name">${name}</div><div class="month-amount">₹${total.toFixed(2)}</div>`;
@@ -450,7 +450,7 @@ function renderTransactions() {
 function showDays(monthKey) {
     const [year, month] = monthKey.split('-');
     const days = {};
-    
+
     state.expenses.forEach(e => {
         const d = new Date(e.date);
         if (d.getFullYear() == year && d.getMonth() + 1 == month) {
@@ -458,13 +458,13 @@ function showDays(monthKey) {
             days[day] = (days[day] || 0) + e.amount;
         }
     });
-    
+
     const name = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
     const total = Object.values(days).reduce((a, b) => a + b, 0);
-    
+
     document.getElementById('selectedMonthTitle').textContent = name;
     document.getElementById('selectedMonthTotal').textContent = `Total: ₹${total.toFixed(2)}`;
-    
+
     DOM.daysGrid.innerHTML = '';
     Object.entries(days).sort((a, b) => b[0] - a[0]).forEach(([day, amt]) => {
         const div = document.createElement('div');
@@ -473,7 +473,7 @@ function showDays(monthKey) {
         div.addEventListener('click', () => showTransactions(monthKey, day));
         DOM.daysGrid.appendChild(div);
     });
-    
+
     DOM.monthsView.style.display = 'none';
     DOM.daysView.style.display = 'block';
 }
@@ -481,16 +481,16 @@ function showDays(monthKey) {
 function showTransactions(monthKey, day) {
     const [year, month] = monthKey.split('-');
     const dateStr = `${year}-${month}-${String(day).padStart(2, '0')}`;
-    
+
     const trans = state.expenses.filter(e => e.date === dateStr);
     const total = trans.reduce((a, e) => a + e.amount, 0);
-    
+
     const d = new Date(year, month - 1, day);
     const dateDisplay = d.toLocaleString('default', { weekday: 'long', month: 'long', day: 'numeric' });
-    
+
     document.getElementById('selectedDateTitle').textContent = dateDisplay;
     document.getElementById('selectedDateTotal').textContent = `Total: ₹${total.toFixed(2)}`;
-    
+
     DOM.transactionsGrid.innerHTML = '';
     trans.forEach(t => {
         const div = document.createElement('div');
@@ -505,7 +505,7 @@ function showTransactions(monthKey, day) {
         `;
         DOM.transactionsGrid.appendChild(div);
     });
-    
+
     DOM.daysView.style.display = 'none';
     DOM.transactionsView.style.display = 'block';
 }
@@ -513,29 +513,29 @@ function showTransactions(monthKey, day) {
 // ===== Validation =====
 function validate(data) {
     let valid = true;
-    
+
     if (!data.amount || data.amount <= 0) {
         document.getElementById('amountErr').textContent = 'Enter valid amount > 0';
         document.getElementById('amountErr').classList.remove('d-none');
         valid = false;
     }
-    
+
     if (!data.category) {
         document.getElementById('categoryErr').textContent = 'Select a category';
         document.getElementById('categoryErr').classList.remove('d-none');
         valid = false;
     }
-    
+
     const dateStr = data.date;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
     if (dateStr > todayStr) {
         document.getElementById('dateErr').textContent = 'Cannot be in future';
         document.getElementById('dateErr').classList.remove('d-none');
         valid = false;
     }
-    
+
     return valid;
 }
 
@@ -572,3 +572,96 @@ function esc(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// ===== AI CHAT =====
+const chatState = {
+    currentExtraction: null,
+    awaitingConfirmation: false
+};
+
+// Add Chat to navigation
+function setupChatPage() {
+    const chatForm = document.getElementById('chatForm');
+    if (chatForm) {
+        chatForm.addEventListener('submit', handleChatSubmit);
+    }
+}
+
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add user message to chat
+    addChatMessage(message, 'user');
+    input.value = '';
+
+    try {
+        showLoading(true);
+        const result = await apiCall('POST', '/chat', { message });
+        showLoading(false);
+
+        if (result.needs_clarification) {
+            addChatMessage(result.message, 'ai');
+            chatState.currentExtraction = result.extracted;
+        } else if (result.needs_confirmation) {
+            addChatMessage(result.message, 'ai');
+            addConfirmationButtons(result.extracted);
+            chatState.currentExtraction = result.extracted;
+            chatState.awaitingConfirmation = true;
+        }
+    } catch (e) {
+        addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
+    }
+}
+
+function addChatMessage(text, sender) {
+    const chatBox = document.getElementById('chatBox');
+    const msg = document.createElement('div');
+    msg.className = `chat-message ${sender}-message`;
+    msg.textContent = text;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function addConfirmationButtons(extraction) {
+    const chatBox = document.getElementById('chatBox');
+    const btnContainer = document.createElement('div');
+    btnContainer.className = 'confirmation-buttons';
+    btnContainer.innerHTML = `
+        <button class="btn-yes" onclick="confirmExpense(${JSON.stringify(extraction).replace(/"/g, '&quot;')})">
+            ✅ Yes, Save
+        </button>
+        <button class="btn-no" onclick="rejectExpense()">
+            ❌ No, Cancel
+        </button>
+    `;
+    chatBox.appendChild(btnContainer);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function confirmExpense(extraction) {
+    try {
+        showLoading(true);
+        const result = await apiCall('POST', '/chat/confirm', extraction);
+        showLoading(false);
+
+        addChatMessage(result.message, 'ai');
+        chatState.awaitingConfirmation = false;
+        chatState.currentExtraction = null;
+        await loadExpenses();
+    } catch (e) {
+        addChatMessage('Error saving expense. Please try again.', 'ai');
+    }
+}
+
+function rejectExpense() {
+    addChatMessage('No problem! Tell me again or let me know what to change.', 'ai');
+    chatState.awaitingConfirmation = false;
+    chatState.currentExtraction = null;
+}
+
+// Initialize chat when page loads
+setupChatPage();

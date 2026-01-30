@@ -6,6 +6,9 @@ This file sets up the Flask app and database connection
 from flask import Flask
 from flask_cors import CORS
 from app.models import db
+from dotenv import load_dotenv
+load_dotenv()
+
 
 
 def create_app():

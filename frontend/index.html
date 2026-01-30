@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExpenseAI - Smart Expense Tracker</title>
-    
+
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    
+
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body class="dark-theme">
-    
+
     <nav class="navbar navbar-dark bg-gradient sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="#">
@@ -26,7 +28,7 @@
 
     <div class="container-fluid main-wrapper">
         <div class="row h-100">
-            
+
             <nav class="col-12 col-md-3 col-lg-2 sidebar d-flex flex-column">
                 <div class="nav-menu mt-4">
                     <a href="#" class="nav-item active" data-page="dashboard">
@@ -41,11 +43,15 @@
                         <i class="fas fa-list"></i>
                         <span>Transactions</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="chat">
+                        <i class="fas fa-robot"></i>
+                        <span>AI Chat</span>
+                    </a>
                 </div>
             </nav>
 
             <main class="col-12 col-md-9 col-lg-10 content-area">
-                
+
                 <!-- Dashboard Page -->
                 <div class="page-section active" id="dashboard-page">
                     <div class="page-title">
@@ -134,7 +140,8 @@
                         <form id="expenseForm" class="expense-form">
                             <div class="form-group">
                                 <label class="form-label">Amount (₹)</label>
-                                <input type="number" class="form-control" id="amount" placeholder="0.00" step="0.01" min="0" required>
+                                <input type="number" class="form-control" id="amount" placeholder="0.00" step="0.01"
+                                    min="0" required>
                                 <small id="amountErr" class="text-danger d-none"></small>
                             </div>
 
@@ -147,15 +154,18 @@
                                     </div>
                                     <div>
                                         <input type="radio" id="transport" name="category" value="Transport">
-                                        <label for="transport" class="cat-btn"><i class="fas fa-car"></i> Transport</label>
+                                        <label for="transport" class="cat-btn"><i class="fas fa-car"></i>
+                                            Transport</label>
                                     </div>
                                     <div>
                                         <input type="radio" id="utilities" name="category" value="Utilities">
-                                        <label for="utilities" class="cat-btn"><i class="fas fa-lightbulb"></i> Utilities</label>
+                                        <label for="utilities" class="cat-btn"><i class="fas fa-lightbulb"></i>
+                                            Utilities</label>
                                     </div>
                                     <div>
                                         <input type="radio" id="entertainment" name="category" value="Entertainment">
-                                        <label for="entertainment" class="cat-btn"><i class="fas fa-film"></i> Entertainment</label>
+                                        <label for="entertainment" class="cat-btn"><i class="fas fa-film"></i>
+                                            Entertainment</label>
                                     </div>
                                     <div>
                                         <input type="radio" id="health" name="category" value="Health">
@@ -163,15 +173,18 @@
                                     </div>
                                     <div>
                                         <input type="radio" id="shopping" name="category" value="Shopping">
-                                        <label for="shopping" class="cat-btn"><i class="fas fa-shopping-bag"></i> Shopping</label>
+                                        <label for="shopping" class="cat-btn"><i class="fas fa-shopping-bag"></i>
+                                            Shopping</label>
                                     </div>
                                     <div>
                                         <input type="radio" id="education" name="category" value="Education">
-                                        <label for="education" class="cat-btn"><i class="fas fa-book"></i> Education</label>
+                                        <label for="education" class="cat-btn"><i class="fas fa-book"></i>
+                                            Education</label>
                                     </div>
                                     <div>
                                         <input type="radio" id="other" name="category" value="Other">
-                                        <label for="other" class="cat-btn"><i class="fas fa-ellipsis-h"></i> Other</label>
+                                        <label for="other" class="cat-btn"><i class="fas fa-ellipsis-h"></i>
+                                            Other</label>
                                     </div>
                                 </div>
                                 <small id="categoryErr" class="text-danger d-none d-block"></small>
@@ -179,7 +192,8 @@
 
                             <div class="form-group">
                                 <label class="form-label">Description</label>
-                                <textarea class="form-control" id="description" rows="3" placeholder="What did you spend on?"></textarea>
+                                <textarea class="form-control" id="description" rows="3"
+                                    placeholder="What did you spend on?"></textarea>
                             </div>
 
                             <div class="form-group">
@@ -230,6 +244,33 @@
                         </div>
                     </div>
                 </div>
+                <!-- Chat Page -->
+                <div class="page-section" id="chat-page">
+                    <div class="page-title">
+                        <h1>Chat with AI</h1>
+                        <p>Talk naturally to add expenses</p>
+                    </div>
+
+                    <div class="chat-wrapper">
+                        <div class="chat-box" id="chatBox">
+                            <!-- Messages will appear here -->
+                            <div class="chat-message ai-message">
+                                <p>Hi! 👋 Tell me about your expense. For example: "I spent 500 on lunch today"</p>
+                            </div>
+                        </div>
+
+                        <form id="chatForm" class="chat-input-form">
+                            <input type="text" id="chatInput" placeholder="Tell me your expense..." required>
+                            <button type="submit" class="btn-send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+
+                        <div id="suggestionBox" class="suggestion-box" style="display: none;">
+                            <!-- Recurring suggestions or summary will appear here -->
+                        </div>
+                    </div>
+                </div>
 
             </main>
         </div>
@@ -256,4 +297,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>
