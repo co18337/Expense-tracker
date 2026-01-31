@@ -43,11 +43,10 @@ const DOM = {
 document.addEventListener('DOMContentLoaded', async () => {
     showLoading(true);
     await loadExpenses(); // Load FIRST
-    // updateDashboard();
     showLoading(false);
     initApp();
 });
-
+let myObject; // Initially undefined
 async function loadExpenses() {
     try {
         const result = await apiCall('GET', '/expenses');
@@ -58,126 +57,71 @@ async function loadExpenses() {
     }
 }
 
+/**
+ * FIX 1: Initialize app with null check for dateInput
+ * Check if dateInput exists before setting its value
+ */
 function initApp() {
-    DOM.dateInput.valueAsDate = new Date();
+    // Only set date if element exists (it's hidden in hybrid layout)
+    if (DOM.dateInput) {
+        DOM.dateInput.valueAsDate = new Date();
+    }
     attachEvents();
     renderDashboard(); // Render AFTER data loaded
 }
 
+/**
+ * FIX 2: Attach events with comprehensive null checks
+ * Check all elements before attaching listeners
+ */
 function attachEvents() {
-    // Dashboard always visible - no nav item clicking needed
-    // Nav items removed from new layout
+    // Dashboard always visible - no navigation needed
 
-    DOM.form.addEventListener('submit', addExpense);
+    // Form submission (if form exists in layout)
+    if (DOM.form) {
+        DOM.form.addEventListener('submit', addExpense);
+    }
 
-    document.getElementById('backToMonths')?.addEventListener('click', () => {
-        DOM.monthsView.style.display = 'block';
-        DOM.daysView.style.display = 'none';
-    });
+    // Back button listeners (for transactions view if used)
+    const backToMonths = document.getElementById('backToMonths');
+    if (backToMonths) {
+        backToMonths.addEventListener('click', () => {
+            if (DOM.monthsView) DOM.monthsView.style.display = 'block';
+            if (DOM.daysView) DOM.daysView.style.display = 'none';
+        });
+    }
 
-    document.getElementById('backToDays')?.addEventListener('click', () => {
-        DOM.daysView.style.display = 'block';
-        DOM.transactionsView.style.display = 'none';
-    });
+    const backToDays = document.getElementById('backToDays');
+    if (backToDays) {
+        backToDays.addEventListener('click', () => {
+            if (DOM.daysView) DOM.daysView.style.display = 'block';
+            if (DOM.transactionsView) DOM.transactionsView.style.display = 'none';
+        });
+    }
 
-    DOM.backFromDaily.addEventListener('click', goBackToMonthlyChart);
+    // Back from daily breakdown (for charts)
+    if (DOM.backFromDaily) {
+        DOM.backFromDaily.addEventListener('click', goBackToMonthlyChart);
+    }
 
-    // Chat form handling
+    // Chat form submission
     const chatForm = document.getElementById('chatForm');
     if (chatForm) {
         chatForm.addEventListener('submit', handleChatSubmit);
     }
 }
 
-// Dashboard always visible - no page switching needed
-function updateDashboard() {
-    /*
-    What: Updates dashboard with latest data
-    Why: Called when data changes (expense added via chat)
-    */
-    updateStats();
-    renderCategoryChart();
-    renderMonthlyChart();
-}
-
-function refreshDashboardData() {
-    /*
-    What: Refreshes dashboard data
-    Why: Called after chat interaction changes expenses
-    */
-    updateDashboard();
-}
-async function apiCall(method, endpoint, data = null) {
-    const options = {
-        method,
-        headers: { 'Content-Type': 'application/json' }
-    };
-    if (data) options.body = JSON.stringify(data);
-
-    try {
-        const res = await fetch(`${API}${endpoint}`, options);
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.message);
-        return result;
-    } catch (err) {
-        toast(err.message, 'error');
-        throw err;
-    }
-}
-
-async function addExpense(e) {
-    e.preventDefault();
-    clearErrors();
-
-    const cat = document.querySelector('input[name="category"]:checked');
-    const data = {
-        amount: parseFloat(DOM.amountInput.value),
-        category: cat?.value,
-        description: document.getElementById('description').value,
-        date: DOM.dateInput.value
-    };
-
-    if (!validate(data)) return;
-
-    try {
-        showLoading(true);
-        await apiCall('POST', '/expenses', data);
-        toast('Expense added!', 'success');
-        DOM.form.reset();
-        DOM.dateInput.valueAsDate = new Date();
-        await loadExpenses();
-        updateDashboard();
-        showLoading(false);
-    } catch (e) {
-        showLoading(false);
-    }
-}
-
-async function deleteExpense(id) {
-    if (!confirm('Delete this expense?')) return;
-    try {
-        showLoading(true);
-        await apiCall('DELETE', `/expenses/${id}`);
-        toast('Deleted!', 'success');
-        await loadExpenses();
-        updateDashboard();
-        showLoading(false);
-    } catch (e) {
-        showLoading(false);
-    }
-}
-
-// ===== Dashboard =====
-function renderDashboard() {
-    if (state.viewingDaily) {
-        goBackToMonthlyChart();
-    }
-    updateStats();
-    renderCategoryChart();
-    renderMonthlyChart();
-}
-
+/**
+ * FIX 3: Update stats with null checks
+ * Verify all stat elements exist before updating
+ */
 function updateStats() {
+    // Check if stat elements exist
+    if (!DOM.thisMonth || !DOM.totalCount || !DOM.dailyAvg || !DOM.topCat) {
+        console.warn('Some stat elements not found');
+        return;
+    }
+
     const now = new Date();
     const thisMonthExp = state.expenses.filter(e => {
         const d = new Date(e.date);
@@ -204,7 +148,58 @@ function updateStats() {
     DOM.topCat.textContent = top ? top[0] : '-';
 }
 
+/**
+ * Dashboard always visible - no page switching needed
+ * Just update the data when user interacts
+ */
+function updateDashboard() {
+    /**
+     * What: Updates dashboard with latest data
+     * Why: Called when data changes (expense added via chat)
+     */
+    updateStats();
+    renderCategoryChart();
+    renderMonthlyChart();
+}
+
+function refreshDashboardData() {
+    /**
+     * What: Refreshes dashboard data
+     * Why: Called after chat interaction changes expenses
+     */
+    updateDashboard();
+}
+
+/**
+ * FIX 4: Render dashboard with chart existence checks
+ */
+function renderDashboard() {
+    if (state.viewingDaily) {
+        goBackToMonthlyChart();
+    }
+
+    // Update dashboard data
+    updateStats();
+
+    // Render charts only if they exist
+    if (DOM.categoryChart) {
+        renderCategoryChart();
+    }
+    if (DOM.monthlyChart) {
+        renderMonthlyChart();
+    }
+}
+
+/**
+ * FIX 5: Render category chart with element existence check
+ */
 function renderCategoryChart() {
+    // Check if chart element exists
+    if (!DOM.categoryChart) {
+        console.warn('Category chart element not found');
+        return;
+    }
+
     const cats = {};
     state.expenses.forEach(e => {
         cats[e.category] = (cats[e.category] || 0) + e.amount;
@@ -246,7 +241,16 @@ function renderCategoryChart() {
     });
 }
 
+/**
+ * FIX 6: Render monthly chart with element existence check
+ */
 function renderMonthlyChart() {
+    // Check if chart element exists
+    if (!DOM.monthlyChart) {
+        console.warn('Monthly chart element not found');
+        return;
+    }
+
     const months = {};
     const now = new Date();
 
@@ -338,9 +342,9 @@ function showDailyBreakdown(monthKey) {
     const total = Object.values(dayData).reduce((a, b) => a + b, 0);
 
     // Update title immediately
-    DOM.monthChartTitle.textContent = `Daily Breakdown - ${monthKey}`;
-    DOM.monthChartDesc.textContent = `Total: ₹${total.toFixed(2)}`;
-    DOM.backFromDaily.style.display = 'inline-block';
+    if (DOM.monthChartTitle) DOM.monthChartTitle.textContent = `Daily Breakdown - ${monthKey}`;
+    if (DOM.monthChartDesc) DOM.monthChartDesc.textContent = `Total: ₹${total.toFixed(2)}`;
+    if (DOM.backFromDaily) DOM.backFromDaily.style.display = 'inline-block';
     state.viewingDaily = true;
 
     // Destroy old chart properly
@@ -349,8 +353,12 @@ function showDailyBreakdown(monthKey) {
         state.charts.monthly = null;
     }
 
-
     // Create new daily chart - fresh canvas
+    if (!DOM.monthlyChart) {
+        console.warn('Monthly chart element not found');
+        return;
+    }
+
     const ctx = DOM.monthlyChart.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(255, 107, 107, 0.8)');
@@ -407,7 +415,7 @@ function showDailyBreakdown(monthKey) {
 
 function goBackToMonthlyChart() {
     state.viewingDaily = false;
-    DOM.backFromDaily.style.display = 'none';
+    if (DOM.backFromDaily) DOM.backFromDaily.style.display = 'none';
 
     // Fade out chart
     const chartCard = DOM.monthlyChart.closest('.chart-card');
@@ -415,13 +423,12 @@ function goBackToMonthlyChart() {
     chartCard.style.transform = 'scale(0.95)';
 
     setTimeout(() => {
-        DOM.monthChartTitle.textContent = 'Spending by Month';
-        DOM.monthChartDesc.textContent = 'Click a bar to see daily breakdown';
+        if (DOM.monthChartTitle) DOM.monthChartTitle.textContent = 'Spending by Month';
+        if (DOM.monthChartDesc) DOM.monthChartDesc.textContent = 'Click a bar to see daily breakdown';
         if (state.charts.monthly) {
             state.charts.monthly.destroy();
         }
         renderMonthlyChart();
-
 
         // Fade in
         chartCard.style.opacity = '1';
@@ -431,9 +438,9 @@ function goBackToMonthlyChart() {
 
 // ===== Transactions =====
 function renderTransactions() {
-    DOM.monthsView.style.display = 'block';
-    DOM.daysView.style.display = 'none';
-    DOM.transactionsView.style.display = 'none';
+    if (DOM.monthsView) DOM.monthsView.style.display = 'block';
+    if (DOM.daysView) DOM.daysView.style.display = 'none';
+    if (DOM.transactionsView) DOM.transactionsView.style.display = 'none';
 
     const months = {};
     state.expenses.forEach(e => {
@@ -442,17 +449,19 @@ function renderTransactions() {
         months[key] = (months[key] || 0) + e.amount;
     });
 
-    DOM.monthsGrid.innerHTML = '';
-    Object.entries(months).sort().reverse().forEach(([key, total]) => {
-        const [year, month] = key.split('-');
-        const name = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (DOM.monthsGrid) {
+        DOM.monthsGrid.innerHTML = '';
+        Object.entries(months).sort().reverse().forEach(([key, total]) => {
+            const [year, month] = key.split('-');
+            const name = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
-        const div = document.createElement('div');
-        div.className = 'month-card';
-        div.innerHTML = `<div class="month-name">${name}</div><div class="month-amount">₹${total.toFixed(2)}</div>`;
-        div.addEventListener('click', () => showDays(key));
-        DOM.monthsGrid.appendChild(div);
-    });
+            const div = document.createElement('div');
+            div.className = 'month-card';
+            div.innerHTML = `<div class="month-name">${name}</div><div class="month-amount">₹${total.toFixed(2)}</div>`;
+            div.addEventListener('click', () => showDays(key));
+            DOM.monthsGrid.appendChild(div);
+        });
+    }
 }
 
 function showDays(monthKey) {
@@ -470,20 +479,24 @@ function showDays(monthKey) {
     const name = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
     const total = Object.values(days).reduce((a, b) => a + b, 0);
 
-    document.getElementById('selectedMonthTitle').textContent = name;
-    document.getElementById('selectedMonthTotal').textContent = `Total: ₹${total.toFixed(2)}`;
+    const selectedMonthTitle = document.getElementById('selectedMonthTitle');
+    const selectedMonthTotal = document.getElementById('selectedMonthTotal');
+    if (selectedMonthTitle) selectedMonthTitle.textContent = name;
+    if (selectedMonthTotal) selectedMonthTotal.textContent = `Total: ₹${total.toFixed(2)}`;
 
-    DOM.daysGrid.innerHTML = '';
-    Object.entries(days).sort((a, b) => b[0] - a[0]).forEach(([day, amt]) => {
-        const div = document.createElement('div');
-        div.className = 'day-card';
-        div.innerHTML = `<div class="day-number">${day}</div><div class="day-amount">₹${amt.toFixed(2)}</div>`;
-        div.addEventListener('click', () => showTransactions(monthKey, day));
-        DOM.daysGrid.appendChild(div);
-    });
+    if (DOM.daysGrid) {
+        DOM.daysGrid.innerHTML = '';
+        Object.entries(days).sort((a, b) => b[0] - a[0]).forEach(([day, amt]) => {
+            const div = document.createElement('div');
+            div.className = 'day-card';
+            div.innerHTML = `<div class="day-number">${day}</div><div class="day-amount">₹${amt.toFixed(2)}</div>`;
+            div.addEventListener('click', () => showTransactions(monthKey, day));
+            DOM.daysGrid.appendChild(div);
+        });
+    }
 
-    DOM.monthsView.style.display = 'none';
-    DOM.daysView.style.display = 'block';
+    if (DOM.monthsView) DOM.monthsView.style.display = 'none';
+    if (DOM.daysView) DOM.daysView.style.display = 'block';
 }
 
 function showTransactions(monthKey, day) {
@@ -496,26 +509,31 @@ function showTransactions(monthKey, day) {
     const d = new Date(year, month - 1, day);
     const dateDisplay = d.toLocaleString('default', { weekday: 'long', month: 'long', day: 'numeric' });
 
-    document.getElementById('selectedDateTitle').textContent = dateDisplay;
-    document.getElementById('selectedDateTotal').textContent = `Total: ₹${total.toFixed(2)}`;
+    const selectedDateTitle = document.getElementById('selectedDateTitle');
+    const selectedDateTotal = document.getElementById('selectedDateTotal');
+    if (selectedDateTitle) selectedDateTitle.textContent = dateDisplay;
+    if (selectedDateTotal) selectedDateTotal.textContent = `Total: ₹${total.toFixed(2)}`;
 
-    DOM.transactionsGrid.innerHTML = '';
-    trans.forEach(t => {
-        const div = document.createElement('div');
-        div.className = 'transaction-card';
-        div.innerHTML = `
-            <div class="transaction-info">
-                <h6>${esc(t.category)}</h6>
-                <p>${esc(t.description || 'No description')}</p>
-            </div>
-            <div class="transaction-amount">₹${t.amount.toFixed(2)}</div>
-            <button class="btn-delete" onclick="deleteExpense(${t.id})"><i class="fas fa-trash"></i></button>
-        `;
-        DOM.transactionsGrid.appendChild(div);
-    });
+    if (DOM.transactionsGrid) {
+        DOM.transactionsGrid.innerHTML = '';
+        trans.forEach(t => {
+            const div = document.createElement('div');
+            div.className = 'transaction-card';
+            div.innerHTML = `
+                <div class="transaction-info">
+                    <h6>${esc(t.category)}</h6>
+                    <p>${esc(t.description || 'No description')}</p>
+                </div>
+                <div class="transaction-amount">₹${t.amount.toFixed(2)}</div>
+                <button class="btn-delete" onclick="deleteExpense(${t.id})"><i class="fas fa-trash"></i></button>
+            `;
+            DOM.transactionsGrid.appendChild(div);
+        });
+    }
 
-    DOM.daysView.style.display = 'none';
-    DOM.transactionsView.style.display = 'block';
+    if (DOM.monthsView) DOM.monthsView.style.display = 'none';
+    if (DOM.daysView) DOM.daysView.style.display = 'none';
+    if (DOM.transactionsView) DOM.transactionsView.style.display = 'block';
 }
 
 // ===== Validation =====
@@ -523,14 +541,20 @@ function validate(data) {
     let valid = true;
 
     if (!data.amount || data.amount <= 0) {
-        document.getElementById('amountErr').textContent = 'Enter valid amount > 0';
-        document.getElementById('amountErr').classList.remove('d-none');
+        const amountErr = document.getElementById('amountErr');
+        if (amountErr) {
+            amountErr.textContent = 'Enter valid amount > 0';
+            amountErr.classList.remove('d-none');
+        }
         valid = false;
     }
 
     if (!data.category) {
-        document.getElementById('categoryErr').textContent = 'Select a category';
-        document.getElementById('categoryErr').classList.remove('d-none');
+        const categoryErr = document.getElementById('categoryErr');
+        if (categoryErr) {
+            categoryErr.textContent = 'Select a category';
+            categoryErr.classList.remove('d-none');
+        }
         valid = false;
     }
 
@@ -539,8 +563,11 @@ function validate(data) {
     const todayStr = today.toISOString().split('T')[0];
 
     if (dateStr > todayStr) {
-        document.getElementById('dateErr').textContent = 'Cannot be in future';
-        document.getElementById('dateErr').classList.remove('d-none');
+        const dateErr = document.getElementById('dateErr');
+        if (dateErr) {
+            dateErr.textContent = 'Cannot be in future';
+            dateErr.classList.remove('d-none');
+        }
         valid = false;
     }
 
@@ -549,17 +576,32 @@ function validate(data) {
 
 function clearErrors() {
     ['amountErr', 'categoryErr', 'dateErr'].forEach(id => {
-        document.getElementById(id).classList.add('d-none');
+        const elem = document.getElementById(id);
+        if (elem) elem.classList.add('d-none');
     });
 }
 
 // ===== UI =====
+/**
+ * FIX 7: Update navigation total with null check
+ */
 function updateNav() {
-    const total = state.expenses.reduce((s, e) => s + e.amount, 0);
-    DOM.navTotal.textContent = `₹${total.toFixed(2)}`;
+    if (DOM.navTotal) {
+        const total = state.expenses.reduce((s, e) => s + e.amount, 0);
+        DOM.navTotal.textContent = `₹${total.toFixed(2)}`;
+    }
 }
 
+/**
+ * FIX 8: Toast with null check
+ */
 function toast(msg, type = 'info') {
+    // Check if toast element exists
+    if (!DOM.toast) {
+        console.warn('Toast element not found');
+        return;
+    }
+
     DOM.toast.innerHTML = `
         <div class="toast-body d-flex align-items-center gap-2">
             <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
@@ -571,8 +613,13 @@ function toast(msg, type = 'info') {
     new bootstrap.Toast(DOM.toast).show();
 }
 
+/**
+ * FIX 9: Loading spinner with null check
+ */
 function showLoading(show) {
-    DOM.loadingSpinner.classList.toggle('d-none', !show);
+    if (DOM.loadingSpinner) {
+        DOM.loadingSpinner.classList.toggle('d-none', !show);
+    }
 }
 
 function esc(text) {
@@ -581,137 +628,160 @@ function esc(text) {
     return div.innerHTML;
 }
 
+// ===== API CALLS =====
+
+async function apiCall(method, endpoint, data = null) {
+    const options = {
+        method,
+        headers: { 'Content-Type': 'application/json' }
+    };
+    if (data) options.body = JSON.stringify(data);
+
+    try {
+        const res = await fetch(`${API}${endpoint}`, options);
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.message);
+        return result;
+    } catch (err) {
+        toast(err.message, 'error');
+        throw err;
+    }
+}
+
+/**
+ * FIX 10: Add expense with dashboard refresh
+ */
+async function addExpense(e) {
+    e.preventDefault();
+    clearErrors();
+
+    const cat = document.querySelector('input[name="category"]:checked');
+    const data = {
+        amount: parseFloat(DOM.amountInput.value),
+        category: cat?.value,
+        description: document.getElementById('description').value,
+        date: DOM.dateInput.value
+    };
+
+    if (!validate(data)) return;
+
+    try {
+        showLoading(true);
+        await apiCall('POST', '/expenses', data);
+        toast('Expense added!', 'success');
+        if (DOM.form) DOM.form.reset();
+        if (DOM.dateInput) DOM.dateInput.valueAsDate = new Date();
+        await loadExpenses();
+        updateDashboard(); // Refresh dashboard
+        showLoading(false);
+    } catch (e) {
+        showLoading(false);
+    }
+}
+
+async function deleteExpense(id) {
+    if (!confirm('Delete this expense?')) return;
+    try {
+        showLoading(true);
+        await apiCall('DELETE', `/expenses/${id}`);
+        toast('Deleted!', 'success');
+        await loadExpenses();
+        updateDashboard(); // Refresh dashboard
+        showLoading(false);
+    } catch (e) {
+        showLoading(false);
+    }
+}
+
 // ===== AI CHAT =====
+
 const chatState = {
     currentExtraction: null,
     awaitingConfirmation: false
 };
 
-// Add Chat to navigation
-function setupChatPage() {
-    const chatForm = document.getElementById('chatForm');
-    if (chatForm) {
-        chatForm.addEventListener('submit', handleChatSubmit);
-    }
-}
-
+/**
+ * Handles chat form submission
+ * Sends message to backend, processes response
+ */
 async function handleChatSubmit(e) {
     e.preventDefault();
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
 
+    // Don't send empty messages
     if (!message) return;
 
-    // Add user message to chat
+    // Add user message to chat display
     addChatMessage(message, 'user');
-    input.value = '';
 
-    try {
-        showLoading(true);
-        const result = await apiCall('POST', '/chat', { message });
-        showLoading(false);
-
-        if (result.needs_clarification) {
-            addChatMessage(result.message, 'ai');
-            chatState.currentExtraction = result.extracted;
-        } else if (result.needs_confirmation) {
-            addChatMessage(result.message, 'ai');
-            addConfirmationButtons(result.extracted);
-            chatState.currentExtraction = result.extracted;
-            chatState.awaitingConfirmation = true;
-        }
-    } catch (e) {
-        addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
-    }
-}
-
-function addChatMessage(text, sender) {
-    const chatBox = document.getElementById('chatBox');
-    const msg = document.createElement('div');
-    msg.className = `chat-message ${sender}-message`;
-    msg.textContent = text;
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-function addConfirmationButtons(extraction) {
-    const chatBox = document.getElementById('chatBox');
-    const btnContainer = document.createElement('div');
-    btnContainer.className = 'confirmation-buttons';
-    btnContainer.innerHTML = `
-        <button class="btn-yes" onclick="confirmExpense(${JSON.stringify(extraction).replace(/"/g, '&quot;')})">
-            ✅ Yes, Save
-        </button>
-        <button class="btn-no" onclick="rejectExpense()">
-            ❌ No, Cancel
-        </button>
-    `;
-    chatBox.appendChild(btnContainer);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-async function confirmExpense(extraction) {
-    try {
-        showLoading(true);
-        const result = await apiCall('POST', '/chat/confirm', extraction);
-        showLoading(false);
-
-        addChatMessage(result.message, 'ai');
-        chatState.awaitingConfirmation = false;
-        chatState.currentExtraction = null;
-        await loadExpenses();
-    } catch (e) {
-        addChatMessage('Error saving expense. Please try again.', 'ai');
-    }
-}
-
-function rejectExpense() {
-    addChatMessage('No problem! Tell me again or let me know what to change.', 'ai');
-    chatState.awaitingConfirmation = false;
-    chatState.currentExtraction = null;
-}
-
-// ===== AI CHAT HANDLER =====
-async function handleChatSubmit(e) {
-    e.preventDefault();
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-
-    if (!message) return;
-
-    // Add user message to chat
-    addChatMessage(message, 'user');
+    // Clear input and focus for next message
     input.value = '';
     input.focus();
 
     try {
+        // Show loading state
         showLoading(true);
+
+        // Send message to backend API
         const result = await apiCall('POST', '/chat', { message });
+
+        // Hide loading
         showLoading(false);
 
-        if (result.needs_clarification) {
-            addChatMessage(result.message, 'ai');
-        } else if (result.needs_confirmation) {
-            addChatMessage(result.message, 'ai');
-            // User can confirm or edit
+        // Display bot response
+        if (result.success) {
+            if (result.message) {
+                addChatMessage(result.message, 'ai');
+            }
+
+            // If expense was added, update dashboard
+            if (result.needs_confirmation || result.needs_clarification) {
+                await loadExpenses();
+                updateDashboard();
+            }
+        } else {
+            addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
         }
     } catch (e) {
-        addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
+        showLoading(false);
+        addChatMessage('Error: Unable to connect to server.', 'ai');
     }
 }
 
+/**
+ * Adds a message to the chat display
+ * sender: 'user' or 'ai'
+ */
 function addChatMessage(text, sender) {
-    /*
-    What: Adds a message to chat display
-    Why: Shows messages in real-time
-    */
     const chatBox = document.getElementById('chatBox');
-    const msg = document.createElement('div');
-    msg.className = `chat-message ${sender}-message`;
-    msg.innerHTML = `<p>${text}</p>`;
-    chatBox.appendChild(msg);
+    if (!chatBox) {
+        console.warn('Chat box element not found');
+        return;
+    }
+
+    // Create message element
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `chat-message ${sender}-message`;
+    msgDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
+
+    // Add to chat
+    chatBox.appendChild(msgDiv);
+
+    // Scroll to bottom
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Initialize chat when page loads
-setupChatPage();
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
