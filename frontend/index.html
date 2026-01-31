@@ -26,40 +26,21 @@
         </div>
     </nav>
 
+    <!-- NEW HYBRID LAYOUT: Dashboard + Chat Side-by-Side -->
     <div class="container-fluid main-wrapper">
         <div class="row h-100">
 
-            <nav class="col-12 col-md-3 col-lg-2 sidebar d-flex flex-column">
-                <div class="nav-menu mt-4">
-                    <a href="#" class="nav-item active" data-page="dashboard">
-                        <i class="fas fa-chart-line"></i>
-                        <span>Dashboard</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="add-expense">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Add Expense</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="transactions">
-                        <i class="fas fa-list"></i>
-                        <span>Transactions</span>
-                    </a>
-                    <a href="#" class="nav-item" data-page="chat">
-                        <i class="fas fa-robot"></i>
-                        <span>AI Chat</span>
-                    </a>
-                </div>
-            </nav>
+            <!-- LEFT PANEL: DASHBOARD (60%) -->
+            <div class="col-12 col-lg-7 dashboard-panel">
+                <div class="dashboard-content">
 
-            <main class="col-12 col-md-9 col-lg-10 content-area">
-
-                <!-- Dashboard Page -->
-                <div class="page-section active" id="dashboard-page">
+                    <!-- Dashboard Title -->
                     <div class="page-title">
                         <h1>Dashboard</h1>
                         <p>Your spending overview</p>
                     </div>
 
-                    <!-- Stats Grid -->
+                    <!-- Stats Row -->
                     <div class="stats-row">
                         <div class="stat-card stat-card-1">
                             <div class="stat-icon">
@@ -127,152 +108,43 @@
                             </button>
                         </div>
                     </div>
+
                 </div>
+            </div>
 
-                <!-- Add Expense Page -->
-                <div class="page-section" id="add-expense-page">
-                    <div class="page-title">
-                        <h1>Add Expense</h1>
-                        <p>Record your spending quickly</p>
+            <!-- RIGHT PANEL: CHAT (40%) -->
+            <div class="col-12 col-lg-5 chat-panel">
+                <div class="chat-container">
+
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <h3>💬 ExpenseAI Assistant</h3>
+                        <p>Chat to add expenses & get insights</p>
                     </div>
 
-                    <div class="form-wrapper">
-                        <form id="expenseForm" class="expense-form">
-                            <div class="form-group">
-                                <label class="form-label">Amount (₹)</label>
-                                <input type="number" class="form-control" id="amount" placeholder="0.00" step="0.01"
-                                    min="0" required>
-                                <small id="amountErr" class="text-danger d-none"></small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">Category</label>
-                                <div class="category-grid">
-                                    <div>
-                                        <input type="radio" id="food" name="category" value="Food">
-                                        <label for="food" class="cat-btn"><i class="fas fa-utensils"></i> Food</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="transport" name="category" value="Transport">
-                                        <label for="transport" class="cat-btn"><i class="fas fa-car"></i>
-                                            Transport</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="utilities" name="category" value="Utilities">
-                                        <label for="utilities" class="cat-btn"><i class="fas fa-lightbulb"></i>
-                                            Utilities</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="entertainment" name="category" value="Entertainment">
-                                        <label for="entertainment" class="cat-btn"><i class="fas fa-film"></i>
-                                            Entertainment</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="health" name="category" value="Health">
-                                        <label for="health" class="cat-btn"><i class="fas fa-heart"></i> Health</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="shopping" name="category" value="Shopping">
-                                        <label for="shopping" class="cat-btn"><i class="fas fa-shopping-bag"></i>
-                                            Shopping</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="education" name="category" value="Education">
-                                        <label for="education" class="cat-btn"><i class="fas fa-book"></i>
-                                            Education</label>
-                                    </div>
-                                    <div>
-                                        <input type="radio" id="other" name="category" value="Other">
-                                        <label for="other" class="cat-btn"><i class="fas fa-ellipsis-h"></i>
-                                            Other</label>
-                                    </div>
-                                </div>
-                                <small id="categoryErr" class="text-danger d-none d-block"></small>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">Description</label>
-                                <textarea class="form-control" id="description" rows="3"
-                                    placeholder="What did you spend on?"></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">Date</label>
-                                <input type="date" class="form-control" id="date" required>
-                                <small id="dateErr" class="text-danger d-none"></small>
-                            </div>
-
-                            <button type="submit" class="btn-submit">
-                                <i class="fas fa-plus"></i> Add Expense
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Transactions Page -->
-                <div class="page-section" id="transactions-page">
-                    <div class="page-title">
-                        <h1>Transactions</h1>
-                        <p>Manage your expenses</p>
-                    </div>
-
-                    <div id="monthsView">
-                        <div class="months-grid" id="monthsGrid">
-                            <!-- Months will be generated here -->
+                    <!-- Chat Messages Area -->
+                    <div class="chat-box" id="chatBox">
+                        <div class="chat-message ai-message">
+                            <p>Hi there! 👋 Tell me about your expense. For example: "I spent 500 on lunch today"</p>
                         </div>
                     </div>
 
-                    <div id="daysView" style="display: none;">
-                        <button class="btn-back-page" id="backToMonths">
-                            <i class="fas fa-arrow-left"></i> Back to Months
+                    <!-- Chat Input Form -->
+                    <form id="chatForm" class="chat-input-form">
+                        <input type="text" id="chatInput" placeholder="Tell me your expense..." required>
+                        <button type="submit" class="btn-send">
+                            <i class="fas fa-paper-plane"></i>
                         </button>
-                        <h4 id="selectedMonthTitle" class="mt-3">-</h4>
-                        <p id="selectedMonthTotal" class="text-muted">Total: ₹0</p>
-                        <div class="days-grid" id="daysGrid">
-                            <!-- Days will be generated here -->
-                        </div>
+                    </form>
+
+                    <!-- Suggestion Box -->
+                    <div id="suggestionBox" class="suggestion-box" style="display: none;">
+                        <!-- Suggestions appear here -->
                     </div>
 
-                    <div id="transactionsView" style="display: none;">
-                        <button class="btn-back-page" id="backToDays">
-                            <i class="fas fa-arrow-left"></i> Back to Days
-                        </button>
-                        <h4 id="selectedDateTitle" class="mt-3">-</h4>
-                        <p id="selectedDateTotal" class="text-muted">Total: ₹0</p>
-                        <div class="transactions-grid" id="transactionsGrid">
-                            <!-- Transactions will be generated here -->
-                        </div>
-                    </div>
                 </div>
-                <!-- Chat Page -->
-                <div class="page-section" id="chat-page">
-                    <div class="page-title">
-                        <h1>Chat with AI</h1>
-                        <p>Talk naturally to add expenses</p>
-                    </div>
+            </div>
 
-                    <div class="chat-wrapper">
-                        <div class="chat-box" id="chatBox">
-                            <!-- Messages will appear here -->
-                            <div class="chat-message ai-message">
-                                <p>Hi! 👋 Tell me about your expense. For example: "I spent 500 on lunch today"</p>
-                            </div>
-                        </div>
-
-                        <form id="chatForm" class="chat-input-form">
-                            <input type="text" id="chatInput" placeholder="Tell me your expense..." required>
-                            <button type="submit" class="btn-send">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </form>
-
-                        <div id="suggestionBox" class="suggestion-box" style="display: none;">
-                            <!-- Recurring suggestions or summary will appear here -->
-                        </div>
-                    </div>
-                </div>
-
-            </main>
         </div>
     </div>
 

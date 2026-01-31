@@ -43,6 +43,7 @@ const DOM = {
 document.addEventListener('DOMContentLoaded', async () => {
     showLoading(true);
     await loadExpenses(); // Load FIRST
+    // updateDashboard();
     showLoading(false);
     initApp();
 });
@@ -64,13 +65,8 @@ function initApp() {
 }
 
 function attachEvents() {
-    DOM.navItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const page = e.currentTarget.getAttribute('data-page');
-            switchPage(page);
-        });
-    });
+    // Dashboard always visible - no nav item clicking needed
+    // Nav items removed from new layout
 
     DOM.form.addEventListener('submit', addExpense);
 
@@ -85,22 +81,32 @@ function attachEvents() {
     });
 
     DOM.backFromDaily.addEventListener('click', goBackToMonthlyChart);
-}
 
-function switchPage(page) {
-    DOM.pages.forEach(p => p.classList.remove('active'));
-    document.getElementById(`${page}-page`).classList.add('active');
-
-    DOM.navItems.forEach(n => n.classList.remove('active'));
-    document.querySelector(`[data-page="${page}"]`).classList.add('active');
-
-    if (page === 'dashboard') {
-        renderDashboard();
-    } else if (page === 'transactions') {
-        renderTransactions();
+    // Chat form handling
+    const chatForm = document.getElementById('chatForm');
+    if (chatForm) {
+        chatForm.addEventListener('submit', handleChatSubmit);
     }
 }
 
+// Dashboard always visible - no page switching needed
+function updateDashboard() {
+    /*
+    What: Updates dashboard with latest data
+    Why: Called when data changes (expense added via chat)
+    */
+    updateStats();
+    renderCategoryChart();
+    renderMonthlyChart();
+}
+
+function refreshDashboardData() {
+    /*
+    What: Refreshes dashboard data
+    Why: Called after chat interaction changes expenses
+    */
+    updateDashboard();
+}
 async function apiCall(method, endpoint, data = null) {
     const options = {
         method,
@@ -140,6 +146,7 @@ async function addExpense(e) {
         DOM.form.reset();
         DOM.dateInput.valueAsDate = new Date();
         await loadExpenses();
+        updateDashboard();
         showLoading(false);
     } catch (e) {
         showLoading(false);
@@ -153,6 +160,7 @@ async function deleteExpense(id) {
         await apiCall('DELETE', `/expenses/${id}`);
         toast('Deleted!', 'success');
         await loadExpenses();
+        updateDashboard();
         showLoading(false);
     } catch (e) {
         showLoading(false);
@@ -661,6 +669,48 @@ function rejectExpense() {
     addChatMessage('No problem! Tell me again or let me know what to change.', 'ai');
     chatState.awaitingConfirmation = false;
     chatState.currentExtraction = null;
+}
+
+// ===== AI CHAT HANDLER =====
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add user message to chat
+    addChatMessage(message, 'user');
+    input.value = '';
+    input.focus();
+
+    try {
+        showLoading(true);
+        const result = await apiCall('POST', '/chat', { message });
+        showLoading(false);
+
+        if (result.needs_clarification) {
+            addChatMessage(result.message, 'ai');
+        } else if (result.needs_confirmation) {
+            addChatMessage(result.message, 'ai');
+            // User can confirm or edit
+        }
+    } catch (e) {
+        addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
+    }
+}
+
+function addChatMessage(text, sender) {
+    /*
+    What: Adds a message to chat display
+    Why: Shows messages in real-time
+    */
+    const chatBox = document.getElementById('chatBox');
+    const msg = document.createElement('div');
+    msg.className = `chat-message ${sender}-message`;
+    msg.innerHTML = `<p>${text}</p>`;
+    chatBox.appendChild(msg);
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 // Initialize chat when page loads
