@@ -785,3 +785,65 @@ function escapeHtml(text) {
     };
     return text.replace(/[&<>"']/g, m => map[m]);
 }
+
+/* =========================================================
+   MODULE 1.2 – NAVIGATION CONTROLLER (ADD-ONLY)
+   DOES NOT MODIFY EXISTING LOGIC
+   ========================================================= */
+
+(function () {
+    // Guard: run only after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const navItems = document.querySelectorAll('.nav-item');
+        const sections = document.querySelectorAll('.page-section');
+
+        if (!navItems.length || !sections.length) {
+            console.warn('Navigation elements not found – skipping tab logic');
+            return;
+        }
+
+        function activateSection(targetId) {
+            // Toggle nav active state
+            navItems.forEach(item => {
+                item.classList.toggle(
+                    'active',
+                    item.getAttribute('data-page') === targetId
+                );
+            });
+
+            // Toggle section visibility
+            sections.forEach(section => {
+                section.classList.toggle(
+                    'active',
+                    section.id === targetId
+                );
+            });
+
+            // Call existing functions safely (if they exist)
+            if (targetId === 'dashboard' && typeof renderDashboard === 'function') {
+                renderDashboard();
+            }
+
+            if (targetId === 'transactions' && typeof renderTransactions === 'function') {
+                renderTransactions();
+            }
+        }
+
+        // Attach click listeners
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.getAttribute('data-page');
+                if (!target) return;
+                activateSection(target);
+            });
+        });
+
+        // Ensure initial state is correct
+        const initial =
+            document.querySelector('.nav-item.active')?.getAttribute('data-page')
+            || 'dashboard';
+
+        activateSection(initial);
+    });
+})();

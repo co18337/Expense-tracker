@@ -15,11 +15,12 @@
 
 <body class="dark-theme">
 
+    <!-- NAVBAR -->
     <nav class="navbar navbar-dark bg-gradient sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold">
+            <span class="navbar-brand fw-bold">
                 <i class="fas fa-wallet me-2"></i>ExpenseAI
-            </a>
+            </span>
             <span class="badge bg-cyan text-dark fw-bold" id="navTotal">₹0</span>
         </div>
     </nav>
@@ -27,122 +28,170 @@
     <div class="container-fluid px-4 py-3">
         <div class="row gx-4">
 
-            <!-- LEFT DASHBOARD -->
+            <!-- LEFT PANEL -->
             <div class="col-lg-7 col-12">
 
-                <div class="mb-4">
-                    <h1 class="mb-1">Dashboard</h1>
-                    <p class="text-muted">Your spending overview</p>
+                <!-- NAVIGATION (required by JS) -->
+                <div class="nav-menu mb-3">
+                    <a class="nav-item active" data-page="dashboard">Dashboard</a>
+                    <a class="nav-item" data-page="add">Add Expense</a>
+                    <a class="nav-item" data-page="transactions">Expenses</a>
                 </div>
 
-                <!-- STATS -->
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card text-center h-100">
-                            <i class="fas fa-wallet mb-2"></i>
-                            <small>This Month</small>
-                            <h4 id="thisMonth">₹0</h4>
+                <!-- ================= DASHBOARD ================= -->
+                <section class="page-section active" id="dashboard">
+
+                    <h1>Dashboard</h1>
+                    <p>Your spending overview</p>
+
+                    <!-- STATS -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-lg-3">
+                            <div class="stat-card">
+                                <p>This Month</p>
+                                <h4 id="thisMonth">₹0</h4>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card text-center h-100">
-                            <i class="fas fa-receipt mb-2"></i>
-                            <small>Total Count</small>
-                            <h4 id="totalCount">0</h4>
+                        <div class="col-6 col-lg-3">
+                            <div class="stat-card">
+                                <p>Total Count</p>
+                                <h4 id="totalCount">0</h4>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card text-center h-100">
-                            <i class="fas fa-chart-bar mb-2"></i>
-                            <small>Daily Avg</small>
-                            <h4 id="dailyAvg">₹0</h4>
+                        <div class="col-6 col-lg-3">
+                            <div class="stat-card">
+                                <p>Daily Avg</p>
+                                <h4 id="dailyAvg">₹0</h4>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="col-6 col-lg-3">
-                        <div class="stat-card text-center h-100">
-                            <i class="fas fa-fire mb-2"></i>
-                            <small>Top Category</small>
-                            <h4 id="topCat">-</h4>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CHART ROW -->
-                <div class="row g-4">
-
-                    <div class="col-12 col-lg-6">
-                        <div class="chart-card h-100">
-                            <h5>Spending by Category</h5>
-                            <p class="text-muted">Distribution of your expenses</p>
-                            <div class="ratio ratio-1x1">
-                                <canvas id="categoryChart"></canvas>
+                        <div class="col-6 col-lg-3">
+                            <div class="stat-card">
+                                <p>Top Category</p>
+                                <h4 id="topCat">-</h4>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-12 col-lg-6">
-                        <div class="chart-card h-100">
-                            <h5 id="monthChartTitle">Spending by Month</h5>
-                            <p class="text-muted" id="monthChartDesc">
-                                Click a bar to see daily breakdown
-                            </p>
-                            <div class="ratio ratio-4x3">
-                                <canvas id="monthlyChart"></canvas>
+                    <!-- CHARTS -->
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <div class="chart-card">
+                                <h5>Spending by Category</h5>
+                                <div class="chart-box">
+                                    <canvas id="categoryChart"></canvas>
+                                </div>
                             </div>
-                            <button class="btn-back-chart" id="backFromDaily" style="display:none;">
-                                <i class="fas fa-arrow-left"></i> Back
-                            </button>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <div class="chart-card">
+                                <h5 id="monthChartTitle">Spending by Month</h5>
+                                <p id="monthChartDesc">Click a bar to see daily breakdown</p>
+                                <div class="chart-box">
+                                    <canvas id="monthlyChart"></canvas>
+                                </div>
+                                <button id="backFromDaily" class="btn-back-chart" style="display:none;">
+                                    <i class="fas fa-arrow-left"></i> Back
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </section>
 
-                </div>
+                <!-- ================= ADD EXPENSE ================= -->
+                <section class="page-section" id="add">
+
+                    <h1>Add Expense</h1>
+
+                    <form id="expenseForm" class="expense-form">
+
+                        <!-- CATEGORY -->
+                        <label>Category</label>
+                        <div class="category-grid">
+                            <input type="radio" name="category" value="Food" id="c1"><label for="c1"
+                                class="cat-btn">Food</label>
+                            <input type="radio" name="category" value="Transport" id="c2"><label for="c2"
+                                class="cat-btn">Transport</label>
+                            <input type="radio" name="category" value="Entertainment" id="c3"><label for="c3"
+                                class="cat-btn">Entertainment</label>
+                            <input type="radio" name="category" value="Utilities" id="c4"><label for="c4"
+                                class="cat-btn">Utilities</label>
+                        </div>
+                        <div id="categoryErr" class="error d-none"></div>
+
+                        <!-- AMOUNT -->
+                        <label>Amount</label>
+                        <input id="amount" type="number" class="form-control" />
+                        <div id="amountErr" class="error d-none"></div>
+
+                        <!-- DATE -->
+                        <label>Date</label>
+                        <input id="date" type="date" class="form-control" />
+                        <div id="dateErr" class="error d-none"></div>
+
+                        <!-- DESCRIPTION -->
+                        <label>Description</label>
+                        <textarea id="description" class="form-control"></textarea>
+
+                        <button type="submit" class="btn-submit mt-3">Add Expense</button>
+                    </form>
+                </section>
+
+                <!-- ================= TRANSACTIONS ================= -->
+                <section class="page-section" id="transactions">
+
+                    <div id="monthsView">
+                        <h3>Months</h3>
+                        <div id="monthsGrid" class="months-grid"></div>
+                    </div>
+
+                    <div id="daysView" style="display:none;">
+                        <button id="backToMonths" class="btn-back-page">Back</button>
+                        <h3 id="selectedMonthTitle"></h3>
+                        <p id="selectedMonthTotal"></p>
+                        <div id="daysGrid" class="days-grid"></div>
+                    </div>
+
+                    <div id="transactionsView" style="display:none;">
+                        <button id="backToDays" class="btn-back-page">Back</button>
+                        <h3 id="selectedDateTitle"></h3>
+                        <p id="selectedDateTotal"></p>
+                        <div id="transactionsGrid" class="transactions-grid"></div>
+                    </div>
+
+                </section>
             </div>
 
             <!-- RIGHT CHAT -->
             <div class="col-lg-5 col-12">
-                <div class="chat-container h-100 d-flex flex-column">
+                <div class="chat-container">
 
-                    <div class="chat-header mb-2">
-                        <h3 class="mb-1">💬 ExpenseAI Assistant</h3>
-                        <p class="text-muted">Chat to add expenses & get insights</p>
+                    <div class="chat-header">
+                        <h3>💬 ExpenseAI Assistant</h3>
+                        <p>Chat to add expenses & get insights</p>
                     </div>
 
-                    <div class="chat-box flex-grow-1 mb-3" id="chatBox">
+                    <div id="chatBox" class="chat-box">
                         <div class="chat-message ai-message">
                             Hi there! 👋<br>
                             Example: <em>"I spent 500 on lunch today"</em>
                         </div>
                     </div>
 
-                    <form id="chatForm" class="chat-input-form d-flex gap-2">
-                        <input type="text" id="chatInput" class="form-control" placeholder="Tell me your expense..."
-                            required>
+                    <form id="chatForm" class="chat-input-form">
+                        <input id="chatInput" type="text" placeholder="Tell me your expense..." />
                         <button type="submit" class="btn-send">
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </form>
 
-                    <div id="suggestionBox" class="suggestion-box mt-2" style="display:none;"></div>
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- TOAST -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="toast" class="toast">
-            <div class="toast-body d-flex align-items-center gap-2">
-                <i id="toastIcon" class="fas"></i>
-                <span id="toastMsg"></span>
-                <button class="btn-close ms-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>
-    </div>
-
+    <div id="toast" class="toast"></div>
     <div id="loadingSpinner" class="spinner-overlay d-none">
         <div class="spinner-border text-info"></div>
     </div>

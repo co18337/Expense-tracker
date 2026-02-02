@@ -24,7 +24,8 @@
     box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
     height: 100%;
 }
 
@@ -39,7 +40,7 @@ body {
 /* ---------------- NAVBAR ---------------- */
 .navbar {
     height: 60px;
-    background: linear-gradient(90deg, rgba(15,20,25,.96), rgba(26,31,46,.96)) !important;
+    background: linear-gradient(90deg, rgba(15, 20, 25, .96), rgba(26, 31, 46, .96)) !important;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
 }
@@ -83,7 +84,7 @@ p {
 /* ---------------- STATS ---------------- */
 .stat-card {
     background: var(--card-bg);
-    border: 1px solid rgba(255,255,255,.08);
+    border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 12px;
     padding: 1.1rem;
     min-height: 100px;
@@ -103,13 +104,24 @@ p {
 
 .stat-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 18px rgba(0,212,255,.18);
+    box-shadow: 0 6px 18px rgba(0, 212, 255, .18);
 }
 
-.stat-card-1 { background: linear-gradient(135deg,#FF6B6B,#FF8787); }
-.stat-card-2 { background: linear-gradient(135deg,#4ECDC4,#45B7AA); }
-.stat-card-3 { background: linear-gradient(135deg,#FFB84D,#FFA500); }
-.stat-card-4 { background: linear-gradient(135deg,#A78BFA,#9D5FFF); }
+.stat-card-1 {
+    background: linear-gradient(135deg, #FF6B6B, #FF8787);
+}
+
+.stat-card-2 {
+    background: linear-gradient(135deg, #4ECDC4, #45B7AA);
+}
+
+.stat-card-3 {
+    background: linear-gradient(135deg, #FFB84D, #FFA500);
+}
+
+.stat-card-4 {
+    background: linear-gradient(135deg, #A78BFA, #9D5FFF);
+}
 
 .stat-card p {
     font-size: .75rem;
@@ -156,7 +168,7 @@ p {
 /* ---------------- BACK BUTTON ---------------- */
 .btn-back-chart {
     margin-top: .75rem;
-    background: rgba(0,212,255,.12);
+    background: rgba(0, 212, 255, .12);
     border: 1px solid var(--primary);
     color: var(--primary);
     padding: 6px 12px;
@@ -200,13 +212,13 @@ p {
 
 .user-message {
     align-self: flex-end;
-    background: linear-gradient(135deg,var(--primary),rgba(0,212,255,.6));
+    background: linear-gradient(135deg, var(--primary), rgba(0, 212, 255, .6));
     color: #fff;
 }
 
 .ai-message {
     align-self: flex-start;
-    background: rgba(255,255,255,.05);
+    background: rgba(255, 255, 255, .05);
     border: 1px solid var(--border-color);
 }
 
@@ -218,7 +230,7 @@ p {
 
 .chat-input-form input {
     flex: 1;
-    background: rgba(255,255,255,.06);
+    background: rgba(255, 255, 255, .06);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: .7rem 1rem;
@@ -243,12 +255,12 @@ p {
 
 .btn-send:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,212,255,.3);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, .3);
 }
 
 /* ---------------- TOAST ---------------- */
 .toast {
-    background: rgba(26,31,46,.96);
+    background: rgba(26, 31, 46, .96);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     color: var(--text-primary);
@@ -258,7 +270,7 @@ p {
 .spinner-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,.7);
+    background: rgba(0, 0, 0, .7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -293,5 +305,196 @@ p {
 
     .chart-box {
         min-height: 200px;
+    }
+}
+
+/* =========================================================
+   MODULE 1.2 – ADDITIVE CSS (DO NOT REMOVE EXISTING STYLES)
+   ========================================================= */
+
+/* ---------- LEFT NAV (Dashboard / Add / Expenses) ---------- */
+.nav-menu {
+    display: flex;
+    gap: 22px;
+    padding: 10px 0 14px;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+}
+
+.nav-item {
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    position: relative;
+    padding-bottom: 6px;
+}
+
+.nav-item.active {
+    color: var(--primary);
+}
+
+.nav-item.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 100%;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+/* ---------- PAGE SECTIONS ---------- */
+.page-section {
+    display: none;
+    animation: fadeIn 0.25s ease;
+}
+
+.page-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ---------- ADD EXPENSE FORM ---------- */
+.expense-form {
+    max-width: 420px;
+    margin-top: 12px;
+}
+
+.expense-form label {
+    font-size: 0.78rem;
+    margin: 8px 0 4px;
+    color: var(--text-secondary);
+}
+
+.expense-form input,
+.expense-form textarea {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+
+.expense-form textarea {
+    min-height: 70px;
+    resize: vertical;
+}
+
+/* category buttons */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.category-grid input {
+    display: none;
+}
+
+.cat-btn {
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.category-grid input:checked+.cat-btn {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(0, 212, 255, 0.08);
+}
+
+/* submit button */
+.btn-submit {
+    width: 100%;
+    padding: 7px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+/* ---------- VALIDATION ERRORS ---------- */
+.error {
+    font-size: 0.72rem;
+    margin-top: 2px;
+    color: #ff6b6b;
+}
+
+/* ---------- TRANSACTIONS (MONTH / DAY / LIST) ---------- */
+.months-grid,
+.days-grid,
+.transactions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.month-card,
+.day-card,
+.transaction-card {
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.month-card:hover,
+.day-card:hover,
+.transaction-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+}
+
+.month-card h4,
+.day-card h4 {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+}
+
+.month-card p,
+.day-card p,
+.transaction-card p {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ---------- BACK BUTTONS ---------- */
+.btn-back-page {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--primary);
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+/* ---------- SMALL SCREEN SAFETY ---------- */
+@media (max-width: 768px) {
+    .expense-form {
+        max-width: 100%;
+    }
+
+    .nav-menu {
+        gap: 14px;
     }
 }
