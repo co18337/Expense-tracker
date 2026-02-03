@@ -969,3 +969,12 @@ body {
     cursor: not-allowed;
     transform: none !important;
 }
+
+/* color background for add expanse in form category dropdown menu */
+.form-select{
+    background-color: #bff7ff;
+}
+
+.btn-submit{
+    background-color: #bff7ff;
+}
