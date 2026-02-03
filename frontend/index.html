@@ -106,19 +106,41 @@
                     <form id="expenseForm" class="expense-form">
 
                         <!-- CATEGORY -->
-                        <label>Category</label>
+                        <!-- <label>Category</label>
                         <div class="category-grid">
-                            <input type="radio" name="category" value="Food" id="c1"><label for="c1"
-                                class="cat-btn">Food</label>
-                            <input type="radio" name="category" value="Transport" id="c2"><label for="c2"
-                                class="cat-btn">Transport</label>
-                            <input type="radio" name="category" value="Entertainment" id="c3"><label for="c3"
-                                class="cat-btn">Entertainment</label>
-                            <input type="radio" name="category" value="Utilities" id="c4"><label for="c4"
-                                class="cat-btn">Utilities</label>
+                            <input type="radio" name="category" value="Food" id="c1">
+                            <label for="c1" class="cat-btn">Food</label>
+
+                            <input type="radio" name="category" value="Transport" id="c2">
+                            <label for="c2" class="cat-btn">Transport</label>
+
+                            <input type="radio" name="category" value="Entertainment" id="c3">
+                            <label for="c3" class="cat-btn">Entertainment</label>
+
+                            <input type="radio" name="category" value="Utilities" id="c4">
+                            <label for="c4" class="cat-btn">Utilities</label>
+
+                            <input type="radio" name="category" value="Other" id="c5">
+                            <label for="c5" class="cat-btn">Other</label>
+                        </div>
+
+                        <div id="otherCategoryContainer" class="mt-2 d-none">
+                            <input type="text" id="customCategoryInput" class="form-control"
+                                placeholder="Enter category name (e.g. Sports)...">
+                            <small class="text-muted">Leave empty for 'Miscellaneous'</small>
+                        </div>
+
+                        <div id="categoryErr" class="error d-none"></div> -->
+                        <label>Category</label>
+                        <select id="categorySelect" class="form-select mb-2">
+                            <option value="" disabled selected>Select a category...</option>
+                        </select>
+
+                        <div id="otherCategoryContainer" class="d-none">
+                            <input type="text" id="customCategoryInput" class="form-control"
+                                placeholder="Enter new category name (e.g. Sports)">
                         </div>
                         <div id="categoryErr" class="error d-none"></div>
-
                         <!-- AMOUNT -->
                         <label>Amount</label>
                         <input id="amount" type="number" class="form-control" />

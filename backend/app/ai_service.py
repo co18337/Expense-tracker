@@ -26,31 +26,35 @@ class ExpenseExtractor:
         """
         self.model = "llama-3.1-8b-instant"
         self.conversation_history = []
+# Update the method signature to accept `known_categories`
+    def extract_expense(self, user_message, known_categories=None):
+        
+        # Default to standard if nothing provided
+        if not known_categories:
+            known_categories = ["Food", "Transport", "Utilities", "Entertainment", "Health", "Shopping"]
+            
+        # Create a dynamic string like: "Food|Transport|Sports|Medical"
+        cat_string = "|".join(known_categories)
 
-    def extract_expense(self, user_message):
-        """
-        What: Parses user message to extract expense details
-        Why: Convert "I spent 500 on pizza yesterday" to structured data
-
-        Returns: Dict with extracted expense data
-        """
-
-        system_prompt = """
+        system_prompt = f"""
 You are an expense tracker AI.
 Extract expense details from user messages.
 
-Return ONLY valid JSON (no markdown, no explanation):
+The user has the following existing categories: {', '.join(known_categories)}.
+Try to match the expense to one of these EXACTLY if possible. 
+If it doesn't fit any, suggest a new short category name (one word).
 
-{
-  "amount": number or null,
-  "category": "Food|Transport|Utilities|Entertainment|Health|Shopping|Education|Other"|null,
-  "description": string or null,
+Return ONLY valid JSON:
+{{
+  "amount": number,
+  "category": "{cat_string}|Other", 
+  "description": string,
   "date": null,
   "is_valid": boolean,
-  "confidence": number (0-100),
+  "confidence": number,
   "missing_fields": [],
   "clarification": string
-}
+}}
 
 Rules:
 - DO NOT infer or guess dates

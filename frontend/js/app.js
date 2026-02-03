@@ -55,6 +55,8 @@ async function loadExpenses() {
         const result = await apiCall('GET', '/expenses');
         state.expenses = result.data || [];
         updateNav();
+        // ✅ NEW: Update dropdown whenever we load data
+        updateCategoryDropdown();
     } catch (e) {
         console.error('Load failed:', e);
     }
@@ -654,14 +656,41 @@ async function apiCall(method, endpoint, data = null) {
 /**
  * FIX 10: Add expense with dashboard refresh
  */
+/**
+ * Title Case Helper
+ * Converts "sports" -> "Sports" to prevent duplicate categories in charts
+ */
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, (txt) => {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
+
 async function addExpense(e) {
     e.preventDefault();
     clearErrors();
 
-    const cat = document.querySelector('input[name="category"]:checked');
+    const select = document.getElementById('categorySelect');
+    const customInput = document.getElementById('customCategoryInput');
+    let finalCategory = null;
+
+    // Logic: If "Create New" is picked, use input. Else use dropdown value.
+    if (select.value === 'NEW_CATEGORY_TRIGGER') {
+        const val = customInput.value.trim();
+        finalCategory = val ? toTitleCase(val) : 'Miscellaneous';
+    } else {
+        finalCategory = select.value;
+    }
+
+    if (!finalCategory) {
+        document.getElementById('categoryErr').textContent = 'Please select a category';
+        document.getElementById('categoryErr').classList.remove('d-none');
+        return;
+    }
+
     const data = {
         amount: parseFloat(DOM.amountInput.value),
-        category: cat?.value,
+        category: finalCategory,
         description: document.getElementById('description').value,
         date: DOM.dateInput.value
     };
@@ -672,13 +701,60 @@ async function addExpense(e) {
         showLoading(true);
         await apiCall('POST', '/expenses', data);
         toast('Expense added!', 'success');
+
         if (DOM.form) DOM.form.reset();
+
+        // Reset UI
+        otherContainer.classList.add('d-none');
+        select.value = ""; // Reset dropdown
+
         if (DOM.dateInput) DOM.dateInput.valueAsDate = new Date();
-        await loadExpenses();
-        updateDashboard(); // Refresh dashboard
+
+        await loadExpenses(); // This will auto-refresh the dropdown with the new category!
+        updateDashboard();
         showLoading(false);
     } catch (e) {
         showLoading(false);
+    }
+}
+
+/**
+ * Populates dropdown with unique categories from existing expenses
+ * + Adds standard defaults + "Create New" option
+ */
+function updateCategoryDropdown() {
+    const select = document.getElementById('categorySelect');
+    if (!select) return;
+
+    // 1. Get unique categories from history
+    const uniqueCats = new Set(['Food', 'Transport', 'Entertainment', 'Utilities']); // Defaults
+    state.expenses.forEach(e => uniqueCats.add(e.category));
+
+    // 2. Sort them
+    const sortedCats = Array.from(uniqueCats).sort();
+
+    // 3. Preserve current selection if possible, otherwise reset
+    const currentVal = select.value;
+
+    // 4. Build HTML
+    let html = '<option value="" disabled selected>Select a category...</option>';
+
+    sortedCats.forEach(cat => {
+        // Skip 'Miscellaneous' to put it at the end if you want, or just list it
+        html += `<option value="${cat}">${cat}</option>`;
+    });
+
+    // 5. Add "Create New" separator and option
+    html += `
+        <option disabled>──────────</option>
+        <option value="NEW_CATEGORY_TRIGGER">+ Create New...</option>
+    `;
+
+    select.innerHTML = html;
+
+    // Restore selection if it still exists
+    if (currentVal && sortedCats.includes(currentVal)) {
+        select.value = currentVal;
     }
 }
 
@@ -817,7 +893,23 @@ function escapeHtml(text) {
 (function () {
     // Guard: run only after DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
+        // Function to handle "Other" category toggle
+        // Dropdown change listener
+        const categorySelect = document.getElementById('categorySelect');
+        const otherContainer = document.getElementById('otherCategoryContainer');
+        const customInput = document.getElementById('customCategoryInput');
 
+        if (categorySelect) {
+            categorySelect.addEventListener('change', (e) => {
+                if (e.target.value === 'NEW_CATEGORY_TRIGGER') {
+                    otherContainer.classList.remove('d-none');
+                    customInput.focus();
+                } else {
+                    otherContainer.classList.add('d-none');
+                    customInput.value = ''; // Clear custom input
+                }
+            });
+        }
         const navItems = document.querySelectorAll('.nav-item');
         const sections = document.querySelectorAll('.page-section');
 

@@ -429,6 +429,7 @@ from app.ai_service import create_expense_extractor
 
 @api_bp.route('/chat', methods=['POST'])
 def chat_with_ai():
+
     try:
         data = request.get_json()
 
@@ -455,10 +456,24 @@ def chat_with_ai():
                 'type': 'confirmation',
                 'action': 'cancel'
             }), 200
+            # ... (previous checks for yes/no remain the same) ...
 
-        # 👉 ONLY NOW call AI
+        # 1. Fetch distinct categories from Database
+        # This gets a list like [('Food',), ('Sports',), ('Transport',)]
+        existing_cats_query = db.session.query(Expense.category).distinct().all()
+        
+        # Flatten into a simple list: ['Food', 'Sports', 'Transport']
+        known_categories = [row[0] for row in existing_cats_query]
+
+        # 2. Pass this list to the extractor
         extractor = create_expense_extractor()
-        extracted = extractor.extract_expense(message_raw)
+        # ✅ PASS THE LIST HERE
+        extracted = extractor.extract_expense(message_raw, known_categories) 
+
+        # ... (rest of the logic remains the same) ...
+        # 👉 ONLY NOW call AI
+        # extractor = create_expense_extractor()
+        # extracted = extractor.extract_expense(message_raw)
 
         if extracted.get('error'):
             return jsonify({
