@@ -7,6 +7,9 @@ const state = {
     viewingDaily: false
 };
 
+// holds expense waiting for confirmation from chat
+let pendingExpense = null;
+
 const DOM = {
     navItems: document.querySelectorAll('.nav-item'),
     pages: document.querySelectorAll('.page-section'),
@@ -704,48 +707,68 @@ const chatState = {
  * Handles chat form submission
  * Sends message to backend, processes response
  */
+/**
+ * Handles chat form submission
+ * Sends message to backend, processes response
+ */
+/**
+ * Robust chat submit handler
+ * - Handles pendingExpense confirmation locally (POST /api/chat/confirm)
+ * - Handles normal AI flow (POST /api/chat) using apiCall()
+ * - Disables input & button while requests run to avoid duplicates
+ */
+/**
+ * Handles chat form submission
+ * Sends message to backend, processes response
+ */
 async function handleChatSubmit(e) {
-    e.preventDefault();
-    const input = document.getElementById('chatInput');
-    const message = input.value.trim();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
-    // Don't send empty messages
+    const chatInput = document.getElementById('chatInput');
+    const message = chatInput.value.trim();
     if (!message) return;
 
-    // Add user message to chat display
+    // Show user message
     addChatMessage(message, 'user');
+    chatInput.value = '';
 
-    // Clear input and focus for next message
-    input.value = '';
-    input.focus();
+    // Handle text-based confirmation (fallback if they type instead of click)
+    if (pendingExpense) {
+        if (/^(yes|y|save|confirm)$/i.test(message)) {
+            // Find the last disabled buttons and simulate a click, 
+            // OR just call the handler manually. 
+            // For simplicity, we just trigger the logic directly:
+            await handleConfirmation('yes', { closest: () => ({ querySelectorAll: () => [] }) });
+            return;
+        }
+        if (/^(no|n|cancel)$/i.test(message)) {
+            pendingExpense = null;
+            addChatMessage('❎ Expense cancelled.', 'ai');
+            return;
+        }
+    }
 
     try {
-        // Show loading state
         showLoading(true);
-
-        // Send message to backend API
         const result = await apiCall('POST', '/chat', { message });
-
-        // Hide loading
         showLoading(false);
 
-        // Display bot response
-        if (result.success) {
-            if (result.message) {
-                addChatMessage(result.message, 'ai');
-            }
-
-            // If expense was added, update dashboard
-            if (result.needs_confirmation || result.needs_clarification) {
-                await loadExpenses();
-                updateDashboard();
-            }
-        } else {
-            addChatMessage('Sorry, something went wrong. Please try again.', 'ai');
+        if (!result.success) {
+            addChatMessage(result.message || 'Error processing request', 'ai');
+            return;
         }
-    } catch (e) {
+
+        // ✅ HERE IS THE CHANGE: Use buttons for confirmation
+        if (result.needs_confirmation && result.extracted) {
+            pendingExpense = result.extracted;
+            addConfirmationMessage(result.message, result.extracted); // <--- Uses new button function
+        } else {
+            addChatMessage(result.message, 'ai');
+        }
+
+    } catch (err) {
         showLoading(false);
-        addChatMessage('Error: Unable to connect to server.', 'ai');
+        addChatMessage('🚨 Error reaching AI service.', 'ai');
     }
 }
 
@@ -847,3 +870,181 @@ function escapeHtml(text) {
         activateSection(initial);
     });
 })();
+
+/* =========================================================
+   CHAT INPUT FIX — ensure Enter / button / form submit work
+   Drop-in: paste at end of frontend/js/app.js (once)
+   ========================================================= */
+
+(function attachChatSubmitHandlers() {
+    // Run after DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+        // Expected IDs in your index.html — change these if your HTML uses different ids
+        const formId = 'chatForm';
+        const inputId = 'chatInput';
+        const sendBtnId = 'chatSendBtn'; // optional — your current button element
+
+        const chatForm = document.getElementById(formId);
+        const chatInput = document.getElementById(inputId);
+        const sendBtn = document.getElementById(sendBtnId) || document.querySelector('.chat-send-btn');
+
+        // Debug helper
+        function _dbg(msg, ...args) {
+            // comment out next line to silence debug in production
+            console.debug('[chat-fix]', msg, ...args);
+        }
+
+        if (!chatInput) {
+            console.error('[chat-fix] chatInput not found. Expected id="' + inputId + '". Check index.html.');
+            return;
+        } else {
+            _dbg('chatInput found');
+        }
+
+        // Attach submit listener on form (preferred)
+        if (chatForm) {
+            _dbg('chatForm found — attaching submit listener');
+            // remove existing to avoid duplicate handlers if reloading code
+            chatForm.removeEventListener('submit', handleChatSubmit);
+            chatForm.addEventListener('submit', handleChatSubmit);
+        } else {
+            _dbg('chatForm not found. Will rely on Enter key and send button');
+        }
+
+        // Attach Enter handler on input so Enter submits but Shift+Enter creates newline
+        chatInput.removeEventListener('keydown', _enterKeyHandler);
+        chatInput.addEventListener('keydown', _enterKeyHandler);
+
+        // Attach click on send button if present
+        if (sendBtn) {
+            _dbg('sendBtn found — attaching click listener');
+            sendBtn.removeEventListener('click', _onSendClick);
+            sendBtn.addEventListener('click', _onSendClick);
+        } else {
+            _dbg('sendBtn not found');
+        }
+
+        // Helper functions
+        function _enterKeyHandler(e) {
+            // If user presses Enter without Shift -> submit
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // prevent newline
+                _dbg('Enter pressed — submitting chat');
+                // If we have form, use submit so existing logic with form.submit works
+                if (chatForm) {
+                    chatForm.requestSubmit ? chatForm.requestSubmit() : chatForm.submit();
+                } else {
+                    // fallback: call handleChatSubmit manually with synthetic event
+                    try {
+                        handleChatSubmit(new Event('submit', { cancelable: true }));
+                    } catch (err) {
+                        console.error('[chat-fix] handleChatSubmit error', err);
+                    }
+                }
+            }
+        }
+
+        function _onSendClick(e) {
+            e.preventDefault();
+            _dbg('Send button clicked');
+            if (chatForm) {
+                chatForm.requestSubmit ? chatForm.requestSubmit() : chatForm.submit();
+            } else {
+                try {
+                    handleChatSubmit(new Event('submit', { cancelable: true }));
+                } catch (err) {
+                    console.error('[chat-fix] handleChatSubmit error on button click', err);
+                }
+            }
+        }
+
+        // Safety: if handleChatSubmit is not defined, warn
+        if (typeof handleChatSubmit !== 'function') {
+            console.error('[chat-fix] handleChatSubmit() not found in global scope. Ensure function name matches exactly.');
+        } else {
+            _dbg('handleChatSubmit() exists');
+        }
+    });
+})();
+
+
+/**
+ * Adds a message with Yes/No buttons
+ */
+function addConfirmationMessage(text, expenseData) {
+    const chatBox = document.getElementById('chatBox');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-message ai-message';
+
+    // Store data in the DOM element for easy access
+    msgDiv.dataset.expense = JSON.stringify(expenseData);
+
+    msgDiv.innerHTML = `
+        <p>${escapeHtml(text)}</p>
+        <div class="chat-actions">
+            <button class="btn-chat yes" onclick="handleConfirmation('yes', this)">
+                <i class="fas fa-check"></i> Yes
+            </button>
+            <button class="btn-chat no" onclick="handleConfirmation('no', this)">
+                <i class="fas fa-times"></i> No
+            </button>
+        </div>
+    `;
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/**
+ * Handles Yes/No button clicks
+ * Includes "Rollback" logic: Re-enables buttons if server fails
+ */
+async function handleConfirmation(action, btnElement) {
+    if (!pendingExpense) return;
+
+    const container = btnElement.closest('.chat-actions');
+    const allBtns = container.querySelectorAll('button');
+
+    // 1. LOCK UI: Disable buttons to prevent duplicates
+    allBtns.forEach(btn => btn.disabled = true);
+
+    // 2. Show user selection visually
+    addChatMessage(action === 'yes' ? 'Yes, save it.' : 'No, cancel it.', 'user');
+
+    if (action === 'no') {
+        pendingExpense = null;
+        addChatMessage('❎ Expense cancelled.', 'ai');
+        return;
+    }
+
+    // 3. Process Save (Action = 'yes')
+    try {
+        showLoading(true);
+
+        const payload = {
+            amount: Number(pendingExpense.amount),
+            category: pendingExpense.category,
+            description: pendingExpense.description || '',
+            date: pendingExpense.date
+        };
+
+        const result = await apiCall('POST', '/chat/confirm', payload);
+
+        // Success!
+        showLoading(false);
+        addChatMessage(result.message, 'ai');
+        pendingExpense = null;
+        await loadExpenses();
+        updateDashboard();
+
+    } catch (err) {
+        // 4. ROLLBACK ON FAILURE
+        // If error, re-enable buttons so user can try again
+        console.error(err);
+        showLoading(false);
+        addChatMessage('🚨 Save failed. Please try clicking Yes again.', 'ai');
+
+        // UNLOCK UI
+        allBtns.forEach(btn => btn.disabled = false);
+    }
+}

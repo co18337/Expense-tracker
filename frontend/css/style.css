@@ -926,3 +926,46 @@ body {
     flex: 1;
     overflow-y: auto;
 } */
+
+/* Chat Action Buttons */
+.chat-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-chat {
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-chat.yes {
+    background-color: #4ECDC4;
+    /* Teal */
+    color: #1A1F2E;
+}
+
+.btn-chat.yes:hover {
+    background-color: #3dbdb5;
+}
+
+.btn-chat.no {
+    background-color: #FF6B6B;
+    /* Red */
+    color: white;
+}
+
+.btn-chat.no:hover {
+    background-color: #fa5252;
+}
+
+.btn-chat:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
