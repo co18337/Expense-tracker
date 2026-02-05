@@ -425,81 +425,126 @@ def get_category_stats():
 
 # ===== AI CHAT ENDPOINTS =====
 
+"""
+Phase 1: Updated Chat Routes
+Handles all intents: ADD_EXPENSE, QUERY, HELP, UNKNOWN
+"""
+
+# from flask import Blueprint, request, jsonify
+# from app.models import db, Expense
+# from datetime import datetime, date
+
+# api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+# ... (Keep all existing GET, POST, PUT, DELETE endpoints as they are)
+# ... (Paste them from your current routes.py)
+# ... (I'm only showing the updated /chat endpoint below)
+
 from app.ai_service import create_expense_extractor
 
 @api_bp.route('/chat', methods=['POST'])
 def chat_with_ai():
-
+    """
+    Phase 1: Intent-based chat handler
+    - Detects intent (ADD_EXPENSE, QUERY, HELP, UNKNOWN)
+    - Handles each intent differently
+    """
     try:
         data = request.get_json()
-
         message_raw = data.get('message', '').strip()
-        message = message_raw.lower()
 
-        if not message:
+        if not message_raw:
             return jsonify({
                 'success': False,
                 'message': 'Please say something!'
             }), 400
 
-        # ✅ HANDLE YES / NO FIRST
-        if message in ['yes', 'y', 'confirm', 'save']:
-            return jsonify({
-                'success': True,
-                'type': 'confirmation',
-                'action': 'save'
-            }), 200
-
-        if message in ['no', 'n', 'cancel']:
-            return jsonify({
-                'success': True,
-                'type': 'confirmation',
-                'action': 'cancel'
-            }), 200
-            # ... (previous checks for yes/no remain the same) ...
-
-        # 1. Fetch distinct categories from Database
-        # This gets a list like [('Food',), ('Sports',), ('Transport',)]
+        # Get known categories from DB
         existing_cats_query = db.session.query(Expense.category).distinct().all()
-        
-        # Flatten into a simple list: ['Food', 'Sports', 'Transport']
         known_categories = [row[0] for row in existing_cats_query]
 
-        # 2. Pass this list to the extractor
+        # Process message with Phase 1
         extractor = create_expense_extractor()
-        # ✅ PASS THE LIST HERE
-        extracted = extractor.extract_expense(message_raw, known_categories) 
+        result = extractor.process_message(message_raw, known_categories)
 
-        # ... (rest of the logic remains the same) ...
-        # 👉 ONLY NOW call AI
-        # extractor = create_expense_extractor()
-        # extracted = extractor.extract_expense(message_raw)
+        intent = result.get("intent", "UNKNOWN")
+        confidence = result.get("confidence", 0)
+        response_text = result.get("response", "")
 
-        if extracted.get('error'):
-            return jsonify({
-                'success': False,
-                'message': extracted['error']
-            }), 400
+        # ===== HANDLE INTENT: ADD_EXPENSE =====
+        if intent == "ADD_EXPENSE":
+            is_complete = result.get("is_complete", False)
 
-        if not extracted.get('is_valid'):
-            clarification = extractor.ask_clarification(extracted)
+            if not is_complete:
+                missing = result.get("missing_fields", [])
+                return jsonify({
+                    'success': True,
+                    'intent': 'ADD_EXPENSE',
+                    'needs_clarification': True,
+                    'missing_fields': missing,
+                    'extracted': result.get("data", {}),
+                    'message': f"Got it! Missing: {', '.join(missing)}. {response_text}"
+                }), 200
+
+            # All fields present - ask for confirmation
             return jsonify({
                 'success': True,
-                'needs_clarification': True,
-                'extracted': extracted,
-                'message': clarification
+                'intent': 'ADD_EXPENSE',
+                'needs_confirmation': True,
+                'extracted': result.get("data", {}),
+                'message': f"✅ {response_text}\n\nShall I save this?"
             }), 200
 
-        return jsonify({
-            'success': True,
-            'needs_confirmation': True,
-            'extracted': extracted,
-            'message': (
-                f"Got it! You spent ₹{extracted['amount']} on "
-                f"{extracted.get('description', extracted['category'])} "
-                f"on {extracted['date']}. Correct?"
-            )
-        }), 200
+        # ===== HANDLE INTENT: QUERY =====
+        elif intent == "QUERY":
+            query_topic = result.get("query_topic", "")
+
+            if query_topic == "total":
+                total = sum(e.amount for e in Expense.query.all())
+                msg = f"💰 Total spent: ₹{total:.2f}"
+            elif query_topic == "category":
+                cats = {}
+                for e in Expense.query.all():
+                    cats[e.category] = cats.get(e.category, 0) + e.amount
+                msg = "📊 By Category:\n" + "\n".join([f"• {k}: ₹{v:.2f}" for k, v in sorted(cats.items(), key=lambda x: x[1], reverse=True)])
+            elif query_topic == "month":
+                now = date.today()
+                this_month = [e for e in Expense.query.all() if datetime.strptime(e.date, "%Y-%m-%d").month == now.month]
+                total = sum(e.amount for e in this_month)
+                msg = f"📈 This month: ₹{total:.2f} ({len(this_month)} expenses)"
+            else:
+                msg = response_text
+
+            return jsonify({
+                'success': True,
+                'intent': 'QUERY',
+                'message': msg
+            }), 200
+
+        # ===== HANDLE INTENT: HELP =====
+        elif intent == "HELP":
+            help_text = f"""{response_text}
+
+Examples:
+• "Spent 500 on lunch" → Add expense
+• "How much on food?" → Query spending
+• "Show total" → Total expenses
+• "This month?" → Monthly total
+• "Category breakdown" → Expenses by category"""
+            
+            return jsonify({
+                'success': True,
+                'intent': 'HELP',
+                'message': help_text
+            }), 200
+
+        # ===== HANDLE INTENT: UNKNOWN =====
+        else:
+            return jsonify({
+                'success': True,
+                'intent': 'UNKNOWN',
+                'message': f"🤔 {response_text}\n\nTry: 'Spent 500 on food' or 'Total expenses?'"
+            }), 200
 
     except Exception as e:
         return jsonify({
@@ -510,6 +555,50 @@ def chat_with_ai():
 
 @api_bp.route('/chat/confirm', methods=['POST'])
 def confirm_expense():
+    """Confirm and save extracted expense"""
+    try:
+        data = request.get_json()
+
+        if not all(k in data for k in ['amount', 'category', 'date']):
+            return jsonify({
+                'success': False,
+                'message': 'Missing required fields'
+            }), 400
+
+        expense_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+
+        new_expense = Expense(
+            amount=float(data['amount']),
+            category=data['category'],
+            description=data.get('description', ''),
+            date=expense_date
+        )
+
+        db.session.add(new_expense)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f"✅ Saved! ₹{data['amount']} on {data['category']}",
+            'data': new_expense.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Error saving: {str(e)}'
+        }), 500
+
+
+# Keep all your existing endpoints:
+# @api_bp.route('/expenses', methods=['GET'])
+# @api_bp.route('/expenses', methods=['POST'])
+# @api_bp.route('/expenses/<int:expense_id>', methods=['GET'])
+# @api_bp.route('/expenses/<int:expense_id>', methods=['PUT'])
+# @api_bp.route('/expenses/<int:expense_id>', methods=['DELETE'])
+# @api_bp.route('/expenses/stats/categories', methods=['GET'])
+# ... etc
     """
     POST /api/chat/confirm
     
