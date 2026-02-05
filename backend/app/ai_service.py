@@ -1,17 +1,13 @@
 """
-Phase 1: Intent Detection & Entity Extraction Service
-Classifies user intent (ADD_EXPENSE, QUERY, HELP, UNKNOWN)
-Extracts data in one API call
+AI Service - Hardened against Hallucinations
 """
-
 import os
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from groq import Groq
 from app.models import db, Expense
 
 client = Groq(api_key=os.getenv("GROK_API_KEY"))
-
 
 class ExpenseExtractor:
     def __init__(self):
@@ -19,53 +15,45 @@ class ExpenseExtractor:
 
     def process_message(self, user_message, known_categories=None):
         """
-        Phase 1 Core: Intent Detection + Entity Extraction
-        Returns: intent, extracted data, confidence, missing fields
+        Classify intent and extract data.
         """
         if not known_categories:
             known_categories = ["Food", "Transport", "Utilities", "Entertainment", "Health", "Shopping"]
-        
+
         cat_str = ", ".join(known_categories)
         today_str = date.today().isoformat()
 
-        system_prompt = f"""You are ExpenseAI. Analyze the user's intent and extract data.
-
+        # ✅ CHANGED: Added STRICT RULES to prevent hallucinating "500"
+        system_prompt = f"""You are ExpenseAI. Classify intent and extract data.
 TODAY: {today_str}
 CATEGORIES: {cat_str}
 
-STEP 1: Determine Intent
-- ADD_EXPENSE: User reports spending ("spent 500 on food", "i bought groceries for 200")
-- QUERY: User asks about past spending ("total spent?", "food expenses?", "how much this month?")
-- HELP: User asks for help or greets ("hi", "how do i use this?", "help")
-- UNKNOWN: Gibberish or unrelated
+INTENTS:
+- ADD_EXPENSE: User wants to track spending (e.g. "spent 500 on food", "cab 200").
+- QUERY: User asks about spending history (e.g. "how much this month?", "total spent?").
+- HELP: User asks for help or says "hi", "hello".
+- UNKNOWN: Input is vague, gibberish, or unrelated (e.g. "new way", "ok", "cool").
 
-STEP 2: If ADD_EXPENSE, extract:
-- amount (number, must be > 0)
-- category (match from list if possible, else suggest new)
-- description (what was bought)
-- date (YYYY-MM-DD, default to today if not mentioned)
+⚠️ STRICT RULES:
+1. IF NO NUMBER is in the user input, 'amount' MUST be null. DO NOT GUESS.
+2. DO NOT hallucinate numbers. If the user didn't say "500", do not output "500".
+3. If the input is ambiguous (like "new way"), classify as "UNKNOWN" or "HELP".
 
-STEP 3: Return JSON only, no markdown:
+Return ONLY raw JSON:
 {{
   "intent": "ADD_EXPENSE|QUERY|HELP|UNKNOWN",
-  "confidence": 0-100,
   "data": {{
-    "amount": number_or_null,
-    "category": "string_or_null",
-    "description": "string_or_null",
-    "date": "YYYY-MM-DD_or_null"
+    "amount": null_or_number,
+    "category": null_or_string,
+    "description": null_or_string,
+    "date": null_or_YYYY-MM-DD
   }},
-  "is_complete": true_if_all_expense_fields_present,
-  "missing_fields": ["list of missing fields"],
-  "query_topic": "total|category|month|etc_or_null",
-  "response": "Short helpful message"
-}}
-
-Rules:
-- If amount is missing, it's NOT complete
-- If category is missing, it's NOT complete
-- Never guess dates (use today if not mentioned)
-- Always provide a response"""
+  "is_complete": boolean,
+  "missing_fields": [],
+  "query_scope": "THIS_MONTH|LAST_MONTH|TODAY|TOTAL",
+  "query_category": null_or_string,
+  "response": "Short message"
+}}"""
 
         try:
             response = client.chat.completions.create(
@@ -74,36 +62,53 @@ Rules:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
                 ],
-                temperature=0.1,
+                temperature=0.0, # ✅ LOWERED TEMP: Makes AI stricter/less creative
             )
 
-            result = json.loads(response.choices[0].message.content.strip())
+            content = response.choices[0].message.content.strip()
             
-            # Ensure date is today if null
-            if result.get("intent") == "ADD_EXPENSE" and not result["data"].get("date"):
+            if content.startswith("```"):
+                content = content.replace("```json", "").replace("```", "").strip()
+
+            result = json.loads(content)
+            
+            if result.get("intent") == "ADD_EXPENSE" and not result.get("data", {}).get("date"):
                 result["data"]["date"] = today_str
 
             return result
 
-        except json.JSONDecodeError:
-            return {
-                "intent": "UNKNOWN",
-                "confidence": 0,
-                "response": "Sorry, couldn't understand that. Try: 'I spent 500 on food today'"
-            }
         except Exception as e:
+            print(f"AI Service Error: {e}")
             return {
                 "intent": "UNKNOWN",
-                "confidence": 0,
-                "response": f"Error: {str(e)}"
+                "response": "I didn't catch that. Try 'Spent 100 on Cab'."
             }
+
+    # ... (Keep get_expenses_by_scope, detect_recurring, suggest_expense_summary exactly as they were) ...
+    def get_expenses_by_scope(self, scope):
+        today = date.today()
+        all_expenses = Expense.query.all()
+        
+        if scope == "TODAY":
+            return [e for e in all_expenses if e.date == today]
+        elif scope == "THIS_MONTH":
+            return [e for e in all_expenses if e.date.year == today.year and e.date.month == today.month]
+        elif scope == "LAST_MONTH":
+            first_of_this_month = today.replace(day=1)
+            last_month_end = first_of_this_month - timedelta(days=1)
+            return [e for e in all_expenses if e.date.year == last_month_end.year and e.date.month == last_month_end.month]
+        elif scope == "TOTAL":
+            return all_expenses
+        else:
+            return []
+
+    def format_scope_label(self, scope):
+        labels = {"TODAY": "Today", "THIS_MONTH": "This Month", "LAST_MONTH": "Last Month", "TOTAL": "All Time"}
+        return labels.get(scope, scope)
 
     def detect_recurring(self, user_id=None):
-        """Detect recurring expense patterns"""
         expenses = Expense.query.all()
-
-        if len(expenses) < 3:
-            return []
+        if len(expenses) < 3: return []
 
         recurring_patterns = {}
         for exp in expenses:
@@ -111,29 +116,16 @@ Rules:
 
         results = []
         for category, exps in recurring_patterns.items():
-            if len(exps) < 2:
-                continue
-
+            if len(exps) < 2: continue
             amounts = [e.amount for e in exps]
             avg_amount = sum(amounts) / len(amounts)
-
-            similar = [
-                e for e in exps if abs(e.amount - avg_amount) < avg_amount * 0.1
-            ]
-
+            similar = [e for e in exps if abs(e.amount - avg_amount) < avg_amount * 0.1]
             if len(similar) >= 2:
                 from collections import Counter
-
-                weekdays = [
-                    datetime.strptime(e.date, "%Y-%m-%d").weekday()
-                    for e in similar
-                ]
-
+                weekdays = [e.date.weekday() for e in similar]
                 common_day, count = Counter(weekdays).most_common(1)[0]
-
                 if count >= 2:
                     day_name = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][common_day]
-
                     results.append({
                         "category": category,
                         "frequency": "weekly",
@@ -141,33 +133,23 @@ Rules:
                         "average_amount": round(avg_amount, 2),
                         "confidence": round((len(similar) / len(exps)) * 100, 2),
                     })
-
         return results
 
     def suggest_expense_summary(self):
-        """Today's expense summary"""
         today = date.today()
         today_exps = Expense.query.filter(Expense.date == today).all()
-
-        if not today_exps:
-            return "No expenses today yet. Stay frugal! 💰"
-
+        if not today_exps: return "No expenses today yet 💰"
+        
         total = sum(e.amount for e in today_exps)
         count = len(today_exps)
-
         categories = {}
-        for exp in today_exps:
-            categories.setdefault(exp.category, []).append(exp)
-
-        summary = f"📊 Today ({today}):\n"
-        summary += f"Total: ₹{total:.2f} ({count} expense{'s' if count > 1 else ''})\n\n"
-
+        for exp in today_exps: categories.setdefault(exp.category, []).append(exp)
+        
+        summary = f"📊 Today:\nTotal: ₹{total:.2f} ({count} expenses)\n\n"
         for cat, exps in categories.items():
             cat_total = sum(e.amount for e in exps)
             summary += f"• {cat}: ₹{cat_total:.2f}\n"
-
         return summary
-
 
 def create_expense_extractor():
     return ExpenseExtractor()

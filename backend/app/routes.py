@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify
 from app.models import db, Expense
 from datetime import datetime, date
 
+from app.ai_service import create_expense_extractor
 # Create a Blueprint
 # What: Groups related routes together
 # Why: Keeps code organized as app grows
@@ -442,36 +443,29 @@ Handles all intents: ADD_EXPENSE, QUERY, HELP, UNKNOWN
 
 from app.ai_service import create_expense_extractor
 
+
 @api_bp.route('/chat', methods=['POST'])
 def chat_with_ai():
-    """
-    Phase 1: Intent-based chat handler
-    - Detects intent (ADD_EXPENSE, QUERY, HELP, UNKNOWN)
-    - Handles each intent differently
-    """
+    """Simple chat endpoint"""
     try:
         data = request.get_json()
         message_raw = data.get('message', '').strip()
 
         if not message_raw:
-            return jsonify({
-                'success': False,
-                'message': 'Please say something!'
-            }), 400
+            return jsonify({'success': False, 'message': 'Say something!'}), 400
 
-        # Get known categories from DB
-        existing_cats_query = db.session.query(Expense.category).distinct().all()
-        known_categories = [row[0] for row in existing_cats_query]
+        # Get known categories
+        existing_cats = db.session.query(Expense.category).distinct().all()
+        known_categories = [row[0] for row in existing_cats]
 
-        # Process message with Phase 1
+        # Process
         extractor = create_expense_extractor()
         result = extractor.process_message(message_raw, known_categories)
 
         intent = result.get("intent", "UNKNOWN")
-        confidence = result.get("confidence", 0)
         response_text = result.get("response", "")
 
-        # ===== HANDLE INTENT: ADD_EXPENSE =====
+        # ===== ADD_EXPENSE =====
         if intent == "ADD_EXPENSE":
             is_complete = result.get("is_complete", False)
 
@@ -483,37 +477,60 @@ def chat_with_ai():
                     'needs_clarification': True,
                     'missing_fields': missing,
                     'extracted': result.get("data", {}),
-                    'message': f"Got it! Missing: {', '.join(missing)}. {response_text}"
+                    'message': f"Missing: {', '.join(missing)}"
                 }), 200
 
-            # All fields present - ask for confirmation
+            # Complete - ask confirmation
             return jsonify({
                 'success': True,
                 'intent': 'ADD_EXPENSE',
                 'needs_confirmation': True,
                 'extracted': result.get("data", {}),
-                'message': f"✅ {response_text}\n\nShall I save this?"
+                'message': f"Save ₹{result['data']['amount']} on {result['data']['category']}?"
             }), 200
 
-        # ===== HANDLE INTENT: QUERY =====
+        # ===== QUERY =====
         elif intent == "QUERY":
-            query_topic = result.get("query_topic", "")
+            query_scope = result.get("query_scope", "TOTAL")
+            query_category = result.get("query_category", None)
 
-            if query_topic == "total":
-                total = sum(e.amount for e in Expense.query.all())
-                msg = f"💰 Total spent: ₹{total:.2f}"
-            elif query_topic == "category":
-                cats = {}
-                for e in Expense.query.all():
-                    cats[e.category] = cats.get(e.category, 0) + e.amount
-                msg = "📊 By Category:\n" + "\n".join([f"• {k}: ₹{v:.2f}" for k, v in sorted(cats.items(), key=lambda x: x[1], reverse=True)])
-            elif query_topic == "month":
-                now = date.today()
-                this_month = [e for e in Expense.query.all() if datetime.strptime(e.date, "%Y-%m-%d").month == now.month]
-                total = sum(e.amount for e in this_month)
-                msg = f"📈 This month: ₹{total:.2f} ({len(this_month)} expenses)"
-            else:
-                msg = response_text
+            expenses = extractor.get_expenses_by_scope(query_scope)
+            scope_label = extractor.format_scope_label(query_scope)
+
+            if not expenses:
+                return jsonify({
+                    'success': True,
+                    'intent': 'QUERY',
+                    'message': f"No expenses {scope_label.lower()}"
+                }), 200
+
+            total = sum(e.amount for e in expenses)
+
+            # Specific category
+            if query_category:
+                cat_expenses = [e for e in expenses if e.category.lower() == query_category.lower()]
+                if cat_expenses:
+                    cat_total = sum(e.amount for e in cat_expenses)
+                    return jsonify({
+                        'success': True,
+                        'intent': 'QUERY',
+                        'message': f"{query_category} ({scope_label}): ₹{cat_total:.2f}"
+                    }), 200
+                else:
+                    return jsonify({
+                        'success': True,
+                        'intent': 'QUERY',
+                        'message': f"No {query_category} expenses {scope_label.lower()}"
+                    }), 200
+
+            # Breakdown by category
+            categories = {}
+            for e in expenses:
+                categories[e.category] = categories.get(e.category, 0) + e.amount
+
+            msg = f"{scope_label}: ₹{total:.2f} ({len(expenses)} expenses)\n\n"
+            for cat, amt in sorted(categories.items(), key=lambda x: x[1], reverse=True):
+                msg += f"• {cat}: ₹{amt:.2f}\n"
 
             return jsonify({
                 'success': True,
@@ -521,16 +538,13 @@ def chat_with_ai():
                 'message': msg
             }), 200
 
-        # ===== HANDLE INTENT: HELP =====
+        # ===== HELP =====
         elif intent == "HELP":
-            help_text = f"""{response_text}
-
-Examples:
-• "Spent 500 on lunch" → Add expense
-• "How much on food?" → Query spending
-• "Show total" → Total expenses
-• "This month?" → Monthly total
-• "Category breakdown" → Expenses by category"""
+            help_text = """Examples:
+• "Spent 500 on food" → Add
+• "This month total?" → Query
+• "Food expenses?" → Category
+• "Help" → This"""
             
             return jsonify({
                 'success': True,
@@ -538,32 +552,26 @@ Examples:
                 'message': help_text
             }), 200
 
-        # ===== HANDLE INTENT: UNKNOWN =====
+        # ===== UNKNOWN =====
         else:
             return jsonify({
                 'success': True,
                 'intent': 'UNKNOWN',
-                'message': f"🤔 {response_text}\n\nTry: 'Spent 500 on food' or 'Total expenses?'"
+                'message': "Try: 'Spent X on Y' or 'How much this month?'"
             }), 200
 
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @api_bp.route('/chat/confirm', methods=['POST'])
 def confirm_expense():
-    """Confirm and save extracted expense"""
+    """Save expense"""
     try:
         data = request.get_json()
 
         if not all(k in data for k in ['amount', 'category', 'date']):
-            return jsonify({
-                'success': False,
-                'message': 'Missing required fields'
-            }), 400
+            return jsonify({'success': False, 'message': 'Missing fields'}), 400
 
         expense_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
 
@@ -585,73 +593,8 @@ def confirm_expense():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error saving: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-
-# Keep all your existing endpoints:
-# @api_bp.route('/expenses', methods=['GET'])
-# @api_bp.route('/expenses', methods=['POST'])
-# @api_bp.route('/expenses/<int:expense_id>', methods=['GET'])
-# @api_bp.route('/expenses/<int:expense_id>', methods=['PUT'])
-# @api_bp.route('/expenses/<int:expense_id>', methods=['DELETE'])
-# @api_bp.route('/expenses/stats/categories', methods=['GET'])
-# ... etc
-    """
-    POST /api/chat/confirm
-    
-    What: User confirms extracted expense and we save it
-    Why: Final step before adding to database
-    
-    Expected JSON:
-    {
-        "amount": 500,
-        "category": "Food",
-        "description": "Pizza",
-        "date": "2025-12-27"
-    }
-    
-    Returns: Confirmation with saved expense
-    Status: 201 or 400
-    """
-    try:
-        data = request.get_json()
-        
-        # Validate
-        if not all(k in data for k in ['amount', 'category', 'date']):
-            return jsonify({
-                'success': False,
-                'message': 'Missing required fields'
-            }), 400
-        
-        # Create and save expense
-        expense_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-
-        new_expense = Expense(
-            amount=float(data['amount']),
-            category=data['category'],
-            description=data.get('description', ''),
-            date=expense_date   # ✅ Python date object
-        )
-
-        
-        db.session.add(new_expense)
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f"✅ Expense saved! ₹{data['amount']} added to {data['category']}",
-            'data': new_expense.to_dict()
-        }), 201
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Error saving expense: {str(e)}'
-        }), 500
 
 
 @api_bp.route('/chat/recurring', methods=['GET'])
