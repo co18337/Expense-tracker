@@ -1104,9 +1104,18 @@ async function handleChatSubmit(e) {
         chatHistory.push({ role: 'assistant', content: result.message });
 
         // 7. Handle Response UI
+
         if (result.needs_confirmation && result.extracted) {
-            pendingExpense = result.extracted;
-            addConfirmationMessage(result.message, result.extracted);
+
+            // ✅ CHECK THIS BLOCK
+            if (result.potential_duplicate) {
+                console.log("Duplicate detected, showing options..."); // Debug log
+                addDuplicateDecisionMessage(result.message, result.extracted, result.potential_duplicate.id);
+            } else {
+                pendingExpense = result.extracted;
+                addConfirmationMessage(result.message, result.extracted);
+            }
+
         } else {
             addChatMessage(result.message, 'ai', true);
         }
@@ -1116,6 +1125,64 @@ async function handleChatSubmit(e) {
         addChatMessage('🚨 Error reaching AI service.', 'ai', true);
     }
 }
+
+
+/**
+ * Shows buttons for "Update vs Create New"
+ */
+function addDuplicateDecisionMessage(text, newExpenseData, existingId) {
+    const chatBox = document.getElementById('chatBox');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-message ai-message';
+
+    msgDiv.innerHTML = `
+        <p>${escapeHtml(text)}</p>
+        <div class="chat-actions">
+            <button class="btn-chat yes" onclick="handleUpdateExisting(${existingId}, ${JSON.stringify(newExpenseData).replace(/"/g, '&quot;')}, this)">
+                <i class="fas fa-edit"></i> Update
+            </button>
+            <button class="btn-chat no" onclick="handleConfirmation('yes', this)">
+                <i class="fas fa-plus"></i> Create New
+            </button>
+        </div>
+    `;
+
+    // Store pending data just in case they click "Create New"
+    pendingExpense = newExpenseData;
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/**
+ * Handles the "Update Existing" click
+ */
+async function handleUpdateExisting(id, newData, btnElement) {
+    const container = btnElement.closest('.chat-actions');
+    const allBtns = container.querySelectorAll('button');
+    allBtns.forEach(btn => btn.disabled = true); // Lock UI
+
+    addChatMessage(`Update previous entry to ₹${newData.amount}.`, 'user');
+
+    try {
+        showLoading(true);
+        // Call the PUT endpoint we already have in routes.py
+        const result = await apiCall('PUT', `/expenses/${id}`, newData);
+        showLoading(false);
+
+        addChatMessage(`✅ Updated! New amount is ₹${result.data.amount}.`, 'ai', true);
+        pendingExpense = null;
+        await loadExpenses();
+        updateDashboard();
+
+    } catch (err) {
+        showLoading(false);
+        addChatMessage('🚨 Update failed.', 'ai', true);
+        allBtns.forEach(btn => btn.disabled = false); // Unlock
+    }
+}
+
+
 /**
  * Adds a message to the chat display
  * sender: 'user' or 'ai'

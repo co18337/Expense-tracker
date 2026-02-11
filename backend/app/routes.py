@@ -446,29 +446,28 @@ from app.ai_service import create_expense_extractor
 
 @api_bp.route('/chat', methods=['POST'])
 def chat_with_ai():
-    """Simple chat endpoint with History & Smart Search"""
+    """Simple chat endpoint with History, Smart Search & Duplicate Detection"""
     try:
         data = request.get_json()
         message_raw = data.get('message', '').strip()
-        history = data.get('history', [])  # <--- Get History
+        history = data.get('history', [])
 
         if not message_raw:
             return jsonify({'success': False, 'message': 'Say something!'}), 400
 
-        # Get known categories
+        # Categories
         existing_cats = db.session.query(Expense.category).distinct().all()
         known_categories = [row[0] for row in existing_cats]
 
-        # Process with History
+        # AI Process
         extractor = create_expense_extractor()
-        # ✅ PASS HISTORY HERE
         result = extractor.process_message(message_raw, known_categories, history)
-
         intent = result.get("intent", "UNKNOWN")
 
-        # ===== ADD_EXPENSE =====
+        # ===== ADD_EXPENSE LOGIC =====
         if intent == "ADD_EXPENSE":
             is_complete = result.get("is_complete", False)
+            extracted_data = result.get("data", {})
 
             if not is_complete:
                 missing = result.get("missing_fields", [])
@@ -477,91 +476,86 @@ def chat_with_ai():
                     'intent': 'ADD_EXPENSE',
                     'needs_clarification': True,
                     'missing_fields': missing,
-                    'extracted': result.get("data", {}),
+                    'extracted': extracted_data,
                     'message': f"Missing: {', '.join(missing)}"
                 }), 200
 
-            # Complete - ask confirmation
+            # ✅ ROBUST DUPLICATE CHECK (ID Based)
+            try:
+                # 1. Parse date
+                ex_date = datetime.strptime(extracted_data['date'], '%Y-%m-%d').date()
+                
+                # 2. Find the VERY LAST expense added to the DB
+                # We don't rely on 'created_at' timestamp anymore, just the ID.
+                last_entry = Expense.query.order_by(Expense.id.desc()).first()
+
+                # 3. Compare
+                if last_entry and last_entry.category == extracted_data['category'] and last_entry.date == ex_date:
+                    print(f"DEBUG: Potential Duplicate Found! ID: {last_entry.id}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'intent': 'ADD_EXPENSE',
+                        'needs_confirmation': True,
+                        'extracted': extracted_data,
+                        'potential_duplicate': {
+                            'id': last_entry.id,
+                            'amount': last_entry.amount,
+                            'category': last_entry.category
+                        },
+                        'message': f"I noticed you just added {last_entry.category} for ₹{last_entry.amount}. Do you want to UPDATE that entry to ₹{extracted_data['amount']} or create a NEW one?"
+                    }), 200
+                else:
+                    print("DEBUG: No recent duplicate found.")
+
+            except Exception as e:
+                print(f"DEBUG: Duplicate check error: {e}")
+                # Continue normally
+
+            # Normal Confirmation
             return jsonify({
                 'success': True,
                 'intent': 'ADD_EXPENSE',
                 'needs_confirmation': True,
-                'extracted': result.get("data", {}),
-                'message': f"Save ₹{result['data']['amount']} on {result['data']['category']}?"
+                'extracted': extracted_data,
+                'message': f"Save ₹{extracted_data['amount']} on {extracted_data['category']}?"
             }), 200
 
-        # ===== QUERY (Updated with Smart Search) =====
+        # ===== QUERY =====
         elif intent == "QUERY":
-            # Extract new fields from AI response
             query_info = result.get("query_info", {})
             scope = query_info.get("scope", "TOTAL")
             category = query_info.get("category")
-            search_term = query_info.get("search_term")  # <--- Smart Keyword
+            search_term = query_info.get("search_term")
 
-            # Call the new Smart Search function
             expenses = extractor.search_expenses(scope, category, search_term)
 
             if not expenses:
-                msg = f"No expenses found."
+                msg = "No expenses found."
                 if search_term: msg += f" matching '{search_term}'"
-                if category: msg += f" in {category}"
-                
-                return jsonify({
-                    'success': True, 
-                    'intent': 'QUERY', 
-                    'message': msg
-                }), 200
+                return jsonify({'success': True, 'intent': 'QUERY', 'message': msg}), 200
 
             total = sum(e.amount for e in expenses)
-
-            # Formulate Response
             msg = f"🔍 **Found {len(expenses)} expenses**"
-            if search_term:
-                msg += f" matching '{search_term}'"
-            elif category:
-                msg += f" in {category}"
-            
+            if search_term: msg += f" for '{search_term}'"
             msg += f":\n**Total: ₹{total:.2f}**\n\n"
 
-            # Limit list to top 5 to avoid flooding chat
             for e in expenses[:5]:
-                # Format: "06 Feb: ₹500 (Burger King)"
                 desc = f"({e.description})" if e.description else ""
                 msg += f"• {e.date.strftime('%d %b')}: ₹{e.amount} {desc}\n"
-
-            if len(expenses) > 5:
-                msg += f"...and {len(expenses)-5} more."
-
-            return jsonify({
-                'success': True,
-                'intent': 'QUERY',
-                'message': msg
-            }), 200
-
-        # ===== HELP =====
-        elif intent == "HELP":
-            help_text = """Examples:
-• "Spent 500 on food" → Add
-• "How much on Uber?" → Search
-• "Total this month?" → Query
-• "Change it to 600" → Edit (Context)"""
             
-            return jsonify({
-                'success': True,
-                'intent': 'HELP',
-                'message': help_text
-            }), 200
+            return jsonify({'success': True, 'intent': 'QUERY', 'message': msg}), 200
 
-        # ===== UNKNOWN =====
+        elif intent == "HELP":
+            return jsonify({'success': True, 'intent': 'HELP', 'message': "Try 'Spent 500 on Food' or 'Update that to 600'."}), 200
         else:
-            return jsonify({
-                'success': True,
-                'intent': 'UNKNOWN',
-                'message': result.get("response", "I'm not sure I understood that.")
-            }), 200
+            return jsonify({'success': True, 'intent': 'UNKNOWN', 'message': result.get("response", "I didn't catch that.")}), 200
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
 @api_bp.route('/chat/confirm', methods=['POST'])
 def confirm_expense():
     """Save expense"""
