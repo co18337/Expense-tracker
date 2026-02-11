@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadExpenses(); // Load FIRST
     showLoading(false);
     initApp();
+    // Animate the welcome message
+    const initialMsg = document.querySelector('.ai-message');
+    if (initialMsg) {
+        const text = initialMsg.innerText.trim();
+        initialMsg.innerText = ''; // Clear it
+        setTimeout(() => typeText(initialMsg, text), 500); // Start typing after 0.5s
+    }
 });
 let myObject; // Initially undefined
 async function loadExpenses() {
@@ -797,6 +804,56 @@ const chatState = {
  * Handles chat form submission
  * Sends message to backend, processes response
  */
+// async function handleChatSubmit(e) {
+//     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+//     const chatInput = document.getElementById('chatInput');
+//     const message = chatInput.value.trim();
+//     if (!message) return;
+
+//     // Show user message
+//     addChatMessage(message, 'user');
+//     chatInput.value = '';
+
+//     // Handle text-based confirmation (fallback if they type instead of click)
+//     if (pendingExpense) {
+//         if (/^(yes|y|save|confirm)$/i.test(message)) {
+//             // Find the last disabled buttons and simulate a click, 
+//             // OR just call the handler manually. 
+//             // For simplicity, we just trigger the logic directly:
+//             await handleConfirmation('yes', { closest: () => ({ querySelectorAll: () => [] }) });
+//             return;
+//         }
+//         if (/^(no|n|cancel)$/i.test(message)) {
+//             pendingExpense = null;
+//             addChatMessage('❎ Expense cancelled.', 'ai');
+//             return;
+//         }
+//     }
+
+//     try {
+//         showLoading(true);
+//         const result = await apiCall('POST', '/chat', { message });
+//         showLoading(false);
+
+//         if (!result.success) {
+//             addChatMessage(result.message || 'Error processing request', 'ai');
+//             return;
+//         }
+
+//         // ✅ HERE IS THE CHANGE: Use buttons for confirmation
+//         if (result.needs_confirmation && result.extracted) {
+//             pendingExpense = result.extracted;
+//             addConfirmationMessage(result.message, result.extracted); // <--- Uses new button function
+//         } else {
+//             addChatMessage(result.message, 'ai');
+//         }
+
+//     } catch (err) {
+//         showLoading(false);
+//         addChatMessage('🚨 Error reaching AI service.', 'ai');
+//     }
+// }
 async function handleChatSubmit(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
@@ -804,68 +861,95 @@ async function handleChatSubmit(e) {
     const message = chatInput.value.trim();
     if (!message) return;
 
-    // Show user message
+    // 1. Show User Message (Instant, no animation)
     addChatMessage(message, 'user');
     chatInput.value = '';
 
-    // Handle text-based confirmation (fallback if they type instead of click)
+    // ============================================================
+    // LOGIC RESTORED: Handle text-based confirmation (Fallback)
+    // ============================================================
     if (pendingExpense) {
+        // If user types "yes", "save", etc. instead of clicking button
         if (/^(yes|y|save|confirm)$/i.test(message)) {
-            // Find the last disabled buttons and simulate a click, 
-            // OR just call the handler manually. 
-            // For simplicity, we just trigger the logic directly:
+            // Simulate button click logic
             await handleConfirmation('yes', { closest: () => ({ querySelectorAll: () => [] }) });
             return;
         }
+        // If user types "no", "cancel", etc.
         if (/^(no|n|cancel)$/i.test(message)) {
             pendingExpense = null;
-            addChatMessage('❎ Expense cancelled.', 'ai');
+            addChatMessage('❎ Expense cancelled.', 'ai', true); // Animate this too
             return;
         }
     }
 
+    // ============================================================
+    // NEW: Animation Flow
+    // ============================================================
+
+    // 2. Show Typing Indicator (The bouncing dots)
+    showTypingIndicator();
+
     try {
-        showLoading(true);
+        // 3. API Call
         const result = await apiCall('POST', '/chat', { message });
-        showLoading(false);
+
+        // 4. Remove Indicator immediately after data arrives
+        removeTypingIndicator();
 
         if (!result.success) {
-            addChatMessage(result.message || 'Error processing request', 'ai');
+            addChatMessage(result.message || 'Error processing request', 'ai', true);
             return;
         }
 
-        // ✅ HERE IS THE CHANGE: Use buttons for confirmation
+        // 5. Handle Response
         if (result.needs_confirmation && result.extracted) {
             pendingExpense = result.extracted;
-            addConfirmationMessage(result.message, result.extracted); // <--- Uses new button function
+            // We pass the extracted data to the button renderer
+            addConfirmationMessage(result.message, result.extracted);
         } else {
-            addChatMessage(result.message, 'ai');
+            // Standard response -> Animate it!
+            addChatMessage(result.message, 'ai', true);
         }
 
     } catch (err) {
-        showLoading(false);
-        addChatMessage('🚨 Error reaching AI service.', 'ai');
+        removeTypingIndicator(); // Ensure dots are gone if it crashes
+        addChatMessage('🚨 Error reaching AI service.', 'ai', true);
     }
 }
-
 /**
  * Adds a message to the chat display
  * sender: 'user' or 'ai'
  */
-function addChatMessage(text, sender) {
+/**
+ * Adds a message to the chat display
+ * animate: boolean (true for AI, false for user)
+ */
+async function addChatMessage(text, sender, animate = false) {
     const chatBox = document.getElementById('chatBox');
-    if (!chatBox) {
-        console.warn('Chat box element not found');
-        return;
-    }
+    if (!chatBox) return;
 
-    // Create message element
+    // Create message bubble
     const msgDiv = document.createElement('div');
     msgDiv.className = `chat-message ${sender}-message`;
-    msgDiv.innerHTML = `<p>${escapeHtml(text)}</p>`;
 
-    // Add to chat
+    // Insert into DOM first (empty if animating)
     chatBox.appendChild(msgDiv);
+
+    if (animate && sender === 'ai') {
+        // Run Typewriter Effect
+        await typeText(msgDiv, text);
+
+        // If the text contains HTML (like bolding), we might want to 
+        // inject it normally after typing completes to render formatting properly.
+        // For simple Phase 1 text, the typeText function above is sufficient.
+        // If we have "<b>Bold</b>", simple typing will show the tags. 
+        // Simple Fix: Just set innerHTML at end to be safe.
+        msgDiv.innerHTML = text;
+    } else {
+        // Instant render (User messages)
+        msgDiv.innerHTML = text;
+    }
 
     // Scroll to bottom
     chatBox.scrollTop = chatBox.scrollHeight;
@@ -883,6 +967,71 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+/* =========================================
+   PHASE 2.1: ANIMATION HELPERS
+   ========================================= */
+
+/**
+ * 1. SHOW TYPING INDICATOR
+ * Creates a temporary bubble with bouncing dots
+ */
+function showTypingIndicator() {
+    const chatBox = document.getElementById('chatBox');
+
+    // Check if already exists
+    if (document.getElementById('typing-indicator')) return;
+
+    const div = document.createElement('div');
+    div.id = 'typing-indicator';
+    div.className = 'typing-indicator';
+    div.innerHTML = `
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+    `;
+
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/**
+ * 2. HIDE TYPING INDICATOR
+ * Removes the bubble
+ */
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+/**
+ * 3. TYPEWRITER EFFECT
+ * types text char-by-char into an element
+ */
+function typeText(element, text, speed = 20) {
+    return new Promise((resolve) => {
+        let i = 0;
+        element.innerHTML = ''; // Clear initial
+        element.classList.add('typing-cursor'); // Add cursor
+
+        function type() {
+            if (i < text.length) {
+                // Handle HTML entities safely or simple text
+                // For simple text, this is fine:
+                element.textContent += text.charAt(i);
+                i++;
+                chatBox.scrollTop = chatBox.scrollHeight; // Auto scroll
+                setTimeout(type, speed);
+            } else {
+                element.classList.remove('typing-cursor'); // Remove cursor
+                resolve(); // Done
+            }
+        }
+        type();
+    });
 }
 
 /* =========================================================
@@ -1140,3 +1289,5 @@ async function handleConfirmation(action, btnElement) {
         allBtns.forEach(btn => btn.disabled = false);
     }
 }
+
+

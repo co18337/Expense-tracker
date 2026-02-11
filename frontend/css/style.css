@@ -971,10 +971,110 @@ body {
 }
 
 /* color background for add expanse in form category dropdown menu */
-.form-select{
+.form-select {
     background-color: #bff7ff;
 }
 
-.btn-submit{
+.btn-submit {
     background-color: #bff7ff;
+}
+
+
+/* =========================================
+   PHASE 2.1: CHAT ANIMATIONS
+   ========================================= */
+
+/* Typing Indicator Container */
+.typing-indicator {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border-bottom-left-radius: 4px;
+    /* Align with AI bubble style */
+    display: table;
+    /* Fits content width */
+    margin-bottom: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* Bouncing Dots */
+.typing-dot {
+    height: 6px;
+    width: 6px;
+    background-color: #4ECDC4;
+    /* Teal accent */
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 2px;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+
+    40% {
+        transform: scale(1);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cursor for Typewriter Effect (Optional) */
+.typing-cursor::after {
+    content: '|';
+    animation: blink 1s step-start infinite;
+    color: #4ECDC4;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.bot-icon {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: rgb(0, 0, 0);
+    padding: 10px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+.chat-header h3 {
+    margin: 0;
+    padding: 0;
+    margin-bottom: 5px;
+    line-height: 1;
 }
