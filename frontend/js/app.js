@@ -9,6 +9,7 @@ const state = {
 
 // holds expense waiting for confirmation from chat
 let pendingExpense = null;
+const chatHistory = []; // Stores {role: 'user'/'assistant', content: '...'}
 
 const DOM = {
     navItems: document.querySelectorAll('.nav-item'),
@@ -79,6 +80,9 @@ function initApp() {
         DOM.dateInput.valueAsDate = new Date();
     }
     attachEvents();
+
+    initHistoryView();  //Enable the Search Toggle
+
     renderDashboard(); // Render AFTER data loaded
 }
 
@@ -448,6 +452,130 @@ function goBackToMonthlyChart() {
     }, 150);
 }
 
+// Filters for transactions hybrid view
+/* =========================================
+   PHASE 2.1: HYBRID VIEW CONTROLLER
+   ========================================= */
+
+let isSearchMode = false;
+
+// Call this inside initApp()
+function initHistoryView() {
+    // 1. Toggle Button Logic
+    const btn = document.getElementById('btnToggleSearch');
+    if (btn) {
+        btn.addEventListener('click', toggleHistoryView);
+    }
+
+    // 2. Search Apply Button
+    const applyBtn = document.getElementById('btnApplySearch');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', runAdvancedSearch);
+    }
+
+    // 3. Populate Search Dropdown
+    populateSearchDropdown();
+}
+
+function toggleHistoryView() {
+    isSearchMode = !isSearchMode;
+
+    const defaultView = document.getElementById('defaultView');
+    const filterView = document.getElementById('filterView');
+    const btn = document.getElementById('btnToggleSearch');
+    const title = document.getElementById('historyTitle');
+
+    if (isSearchMode) {
+        // SWITCH TO SEARCH
+        defaultView.classList.add('d-none');
+        filterView.classList.remove('d-none');
+
+        btn.innerHTML = '<i class="fas fa-times"></i> Close Search';
+        btn.classList.replace('btn-outline-cyan', 'btn-outline-danger');
+        title.textContent = 'Search Expenses';
+
+        // Auto-run search with defaults
+        runAdvancedSearch();
+    } else {
+        // SWITCH BACK TO DEFAULT TILES
+        defaultView.classList.remove('d-none');
+        filterView.classList.add('d-none');
+
+        btn.innerHTML = '<i class="fas fa-search"></i> Advanced Search';
+        btn.classList.replace('btn-outline-danger', 'btn-outline-cyan');
+        title.textContent = 'Expense History';
+
+        // Reset to main month view
+        renderTransactions();
+    }
+}
+
+function populateSearchDropdown() {
+    const select = document.getElementById('searchCategory');
+    if (!select) return;
+
+    const cats = new Set();
+    state.expenses.forEach(e => cats.add(e.category));
+
+    let html = '<option value="ALL">All Categories</option>';
+    Array.from(cats).sort().forEach(c => {
+        html += `<option value="${c}">${c}</option>`;
+    });
+    select.innerHTML = html;
+}
+
+function runAdvancedSearch() {
+    const cat = document.getElementById('searchCategory').value;
+    const from = document.getElementById('searchDateFrom').value;
+    const to = document.getElementById('searchDateTo').value;
+    const list = document.getElementById('searchResultsList');
+    const totalBadge = document.getElementById('searchTotal');
+
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Filter Logic
+    const results = state.expenses.filter(e => {
+        if (cat !== 'ALL' && e.category !== cat) return false;
+        if (from && e.date < from) return false;
+        if (to && e.date > to) return false;
+        return true;
+    });
+
+    // Update Total
+    const total = results.reduce((sum, e) => sum + e.amount, 0);
+    if (totalBadge) totalBadge.textContent = `Total: ₹${total.toFixed(2)}`;
+
+    if (results.length === 0) {
+        list.innerHTML = '<div class="text-center text-muted p-5">No matches found.</div>';
+        return;
+    }
+
+    // Render Flat List
+    results.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'transaction-card';
+        div.innerHTML = `
+               <div class="transaction-info">
+                   <div class="justify-content-between">
+                       <h6 class="mb-0 fw-bold text-light">${t.category}</h6>
+                       <small class="text-secondary">${t.date}</small>
+                   </div>
+                   <p class="mb-0 text-muted small">${t.description || ''}</p>
+               </div>
+               <div class="transaction-amount text-end">
+                   <div class="fw-bold fs-5">₹${t.amount.toFixed(2)}</div>
+                   <button class="btn btn-sm btn-outline-danger border-0 mt-1" 
+                           onclick="deleteExpense(${t.id})">
+                       <i class="fas fa-trash"></i>
+                   </button>
+               </div>
+           `;
+        list.appendChild(div);
+    });
+}
+// End
+
 // ===== Transactions =====
 function renderTransactions() {
     if (DOM.monthsView) DOM.monthsView.style.display = 'block';
@@ -537,7 +665,7 @@ function showTransactions(monthKey, day) {
                     <p>${esc(t.description || 'No description')}</p>
                 </div>
                 <div class="transaction-amount">₹${t.amount.toFixed(2)}</div>
-                <button class="btn-delete" onclick="deleteExpense(${t.id})"><i class="fas fa-trash"></i></button>
+                <button style="background: var(--card-bg) class="btn-delete" onclick="deleteExpense(${t.id})"><i class="fas fa-trash"></i></button>
             `;
             DOM.transactionsGrid.appendChild(div);
         });
@@ -854,6 +982,71 @@ const chatState = {
 //         addChatMessage('🚨 Error reaching AI service.', 'ai');
 //     }
 // }
+
+// async function handleChatSubmit(e) {
+//     if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+//     const chatInput = document.getElementById('chatInput');
+//     const message = chatInput.value.trim();
+//     if (!message) return;
+
+//     // 1. Show User Message (Instant, no animation)
+//     addChatMessage(message, 'user');
+//     chatInput.value = '';
+
+//     // ============================================================
+//     // LOGIC RESTORED: Handle text-based confirmation (Fallback)
+//     // ============================================================
+//     if (pendingExpense) {
+//         // If user types "yes", "save", etc. instead of clicking button
+//         if (/^(yes|y|save|confirm)$/i.test(message)) {
+//             // Simulate button click logic
+//             await handleConfirmation('yes', { closest: () => ({ querySelectorAll: () => [] }) });
+//             return;
+//         }
+//         // If user types "no", "cancel", etc.
+//         if (/^(no|n|cancel)$/i.test(message)) {
+//             pendingExpense = null;
+//             addChatMessage('❎ Expense cancelled.', 'ai', true); // Animate this too
+//             return;
+//         }
+//     }
+
+//     // ============================================================
+//     // NEW: Animation Flow
+//     // ============================================================
+
+//     // 2. Show Typing Indicator (The bouncing dots)
+//     showTypingIndicator();
+
+//     try {
+//         // 3. API Call
+//         const result = await apiCall('POST', '/chat', { message });
+
+//         // 4. Remove Indicator immediately after data arrives
+//         removeTypingIndicator();
+
+//         if (!result.success) {
+//             addChatMessage(result.message || 'Error processing request', 'ai', true);
+//             return;
+//         }
+
+//         // 5. Handle Response
+//         if (result.needs_confirmation && result.extracted) {
+//             pendingExpense = result.extracted;
+//             // We pass the extracted data to the button renderer
+//             addConfirmationMessage(result.message, result.extracted);
+//         } else {
+//             // Standard response -> Animate it!
+//             addChatMessage(result.message, 'ai', true);
+//         }
+
+//     } catch (err) {
+//         removeTypingIndicator(); // Ensure dots are gone if it crashes
+//         addChatMessage('🚨 Error reaching AI service.', 'ai', true);
+//     }
+// }
+
 async function handleChatSubmit(e) {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
@@ -869,32 +1062,37 @@ async function handleChatSubmit(e) {
     // LOGIC RESTORED: Handle text-based confirmation (Fallback)
     // ============================================================
     if (pendingExpense) {
-        // If user types "yes", "save", etc. instead of clicking button
         if (/^(yes|y|save|confirm)$/i.test(message)) {
             // Simulate button click logic
             await handleConfirmation('yes', { closest: () => ({ querySelectorAll: () => [] }) });
             return;
         }
-        // If user types "no", "cancel", etc.
         if (/^(no|n|cancel)$/i.test(message)) {
             pendingExpense = null;
-            addChatMessage('❎ Expense cancelled.', 'ai', true); // Animate this too
+            addChatMessage('❎ Expense cancelled.', 'ai', true);
             return;
         }
     }
 
     // ============================================================
-    // NEW: Animation Flow
+    // NEW: History & API Flow
     // ============================================================
 
-    // 2. Show Typing Indicator (The bouncing dots)
+    // 2. Add to History (Limit to last 6 turns / 3 exchanges)
+    chatHistory.push({ role: 'user', content: message });
+    if (chatHistory.length > 6) chatHistory.shift();
+
+    // 3. Show Typing Indicator
     showTypingIndicator();
 
     try {
-        // 3. API Call
-        const result = await apiCall('POST', '/chat', { message });
+        // 4. API Call (NOW SENDING HISTORY)
+        const result = await apiCall('POST', '/chat', {
+            message: message,
+            history: chatHistory // <--- Pass context to backend
+        });
 
-        // 4. Remove Indicator immediately after data arrives
+        // 5. Remove Indicator
         removeTypingIndicator();
 
         if (!result.success) {
@@ -902,18 +1100,19 @@ async function handleChatSubmit(e) {
             return;
         }
 
-        // 5. Handle Response
+        // 6. Add AI Response to History
+        chatHistory.push({ role: 'assistant', content: result.message });
+
+        // 7. Handle Response UI
         if (result.needs_confirmation && result.extracted) {
             pendingExpense = result.extracted;
-            // We pass the extracted data to the button renderer
             addConfirmationMessage(result.message, result.extracted);
         } else {
-            // Standard response -> Animate it!
             addChatMessage(result.message, 'ai', true);
         }
 
     } catch (err) {
-        removeTypingIndicator(); // Ensure dots are gone if it crashes
+        removeTypingIndicator();
         addChatMessage('🚨 Error reaching AI service.', 'ai', true);
     }
 }

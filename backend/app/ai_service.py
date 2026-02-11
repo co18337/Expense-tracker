@@ -1,5 +1,5 @@
 """
-AI Service - Hardened against Hallucinations
+AI Service - Phase 2.2: Smart Search & Context Memory
 """
 import os
 import json
@@ -13,9 +13,9 @@ class ExpenseExtractor:
     def __init__(self):
         self.model = "llama-3.1-8b-instant"
 
-    def process_message(self, user_message, known_categories=None):
+    def process_message(self, user_message, known_categories=None, history=None):
         """
-        Classify intent and extract data.
+        Classify intent, extract data, keywords, and use history.
         """
         if not known_categories:
             known_categories = ["Food", "Transport", "Utilities", "Entertainment", "Health", "Shopping"]
@@ -23,21 +23,31 @@ class ExpenseExtractor:
         cat_str = ", ".join(known_categories)
         today_str = date.today().isoformat()
 
-        # ✅ CHANGED: Added STRICT RULES to prevent hallucinating "500"
+        # Format History for Prompt
+        history_text = ""
+        if history:
+            history_text = "RECENT CONVERSATION:\n"
+            for msg in history[-5:]: # Look at last 5 messages
+                role = "User" if msg.get('role') == 'user' else "AI"
+                history_text += f"{role}: {msg.get('content')}\n"
+
         system_prompt = f"""You are ExpenseAI. Classify intent and extract data.
 TODAY: {today_str}
 CATEGORIES: {cat_str}
 
-INTENTS:
-- ADD_EXPENSE: User wants to track spending (e.g. "spent 500 on food", "cab 200").
-- QUERY: User asks about spending history (e.g. "how much this month?", "total spent?").
-- HELP: User asks for help or says "hi", "hello".
-- UNKNOWN: Input is vague, gibberish, or unrelated (e.g. "new way", "ok", "cool").
+{history_text}
 
-⚠️ STRICT RULES:
-1. IF NO NUMBER is in the user input, 'amount' MUST be null. DO NOT GUESS.
-2. DO NOT hallucinate numbers. If the user didn't say "500", do not output "500".
-3. If the input is ambiguous (like "new way"), classify as "UNKNOWN" or "HELP".
+INTENTS:
+- ADD_EXPENSE: "spent 500", "cab 200", "change it to 600"
+- QUERY: "how much on uber?", "total food?"
+- HELP: "hi", "help"
+- UNKNOWN: vague inputs
+
+RULES:
+1. USE HISTORY! If user says "change it to 600", look at RECENT CONVERSATION to find what "it" is.
+   - If correcting, return intent="ADD_EXPENSE" with NEW amount and OLD category/description from history.
+2. If searching for an item (e.g. "Burger King"), put it in 'search_term'.
+3. Do not hallucinate numbers.
 
 Return ONLY raw JSON:
 {{
@@ -48,10 +58,12 @@ Return ONLY raw JSON:
     "description": null_or_string,
     "date": null_or_YYYY-MM-DD
   }},
+  "query_info": {{
+      "scope": "THIS_MONTH|LAST_MONTH|TODAY|TOTAL",
+      "category": null_or_string,
+      "search_term": null_or_string
+  }},
   "is_complete": boolean,
-  "missing_fields": [],
-  "query_scope": "THIS_MONTH|LAST_MONTH|TODAY|TOTAL",
-  "query_category": null_or_string,
   "response": "Short message"
 }}"""
 
@@ -62,16 +74,16 @@ Return ONLY raw JSON:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
                 ],
-                temperature=0.0, # ✅ LOWERED TEMP: Makes AI stricter/less creative
+                temperature=0.0,
             )
 
             content = response.choices[0].message.content.strip()
-            
             if content.startswith("```"):
                 content = content.replace("```json", "").replace("```", "").strip()
 
             result = json.loads(content)
             
+            # Default date for ADD
             if result.get("intent") == "ADD_EXPENSE" and not result.get("data", {}).get("date"):
                 result["data"]["date"] = today_str
 
@@ -79,12 +91,39 @@ Return ONLY raw JSON:
 
         except Exception as e:
             print(f"AI Service Error: {e}")
-            return {
-                "intent": "UNKNOWN",
-                "response": "I didn't catch that. Try 'Spent 100 on Cab'."
-            }
+            return {"intent": "UNKNOWN", "response": "I didn't catch that."}
 
-    # ... (Keep get_expenses_by_scope, detect_recurring, suggest_expense_summary exactly as they were) ...
+    def search_expenses(self, scope, category=None, search_term=None):
+        """
+        Smart Search: Handles 'Burger King' vs 'BurgerKing'
+        """
+        query = Expense.query
+        today = date.today()
+
+        # 1. Apply Time Scope
+        if scope == "TODAY":
+            query = query.filter(Expense.date == today)
+        elif scope == "THIS_MONTH":
+            start_date = date(today.year, today.month, 1)
+            query = query.filter(Expense.date >= start_date)
+        elif scope == "LAST_MONTH":
+            first_this = date(today.year, today.month, 1)
+            end_last = first_this - timedelta(days=1)
+            start_last = date(end_last.year, end_last.month, 1)
+            query = query.filter(Expense.date >= start_last, Expense.date <= end_last)
+
+        # 2. Apply Category
+        if category:
+            query = query.filter(Expense.category.ilike(category))
+
+        # 3. Apply Keyword (Wildcard Fix)
+        if search_term:
+            # Replaces spaces with % to find "Burger King" AND "BurgerKing"
+            flexible_term = search_term.replace(' ', '%')
+            query = query.filter(Expense.description.ilike(f'%{flexible_term}%'))
+
+        return query.all()
+
     def get_expenses_by_scope(self, scope):
         today = date.today()
         all_expenses = Expense.query.all()

@@ -446,10 +446,11 @@ from app.ai_service import create_expense_extractor
 
 @api_bp.route('/chat', methods=['POST'])
 def chat_with_ai():
-    """Simple chat endpoint"""
+    """Simple chat endpoint with History & Smart Search"""
     try:
         data = request.get_json()
         message_raw = data.get('message', '').strip()
+        history = data.get('history', [])  # <--- Get History
 
         if not message_raw:
             return jsonify({'success': False, 'message': 'Say something!'}), 400
@@ -458,12 +459,12 @@ def chat_with_ai():
         existing_cats = db.session.query(Expense.category).distinct().all()
         known_categories = [row[0] for row in existing_cats]
 
-        # Process
+        # Process with History
         extractor = create_expense_extractor()
-        result = extractor.process_message(message_raw, known_categories)
+        # ✅ PASS HISTORY HERE
+        result = extractor.process_message(message_raw, known_categories, history)
 
         intent = result.get("intent", "UNKNOWN")
-        response_text = result.get("response", "")
 
         # ===== ADD_EXPENSE =====
         if intent == "ADD_EXPENSE":
@@ -489,48 +490,47 @@ def chat_with_ai():
                 'message': f"Save ₹{result['data']['amount']} on {result['data']['category']}?"
             }), 200
 
-        # ===== QUERY =====
+        # ===== QUERY (Updated with Smart Search) =====
         elif intent == "QUERY":
-            query_scope = result.get("query_scope", "TOTAL")
-            query_category = result.get("query_category", None)
+            # Extract new fields from AI response
+            query_info = result.get("query_info", {})
+            scope = query_info.get("scope", "TOTAL")
+            category = query_info.get("category")
+            search_term = query_info.get("search_term")  # <--- Smart Keyword
 
-            expenses = extractor.get_expenses_by_scope(query_scope)
-            scope_label = extractor.format_scope_label(query_scope)
+            # Call the new Smart Search function
+            expenses = extractor.search_expenses(scope, category, search_term)
 
             if not expenses:
+                msg = f"No expenses found."
+                if search_term: msg += f" matching '{search_term}'"
+                if category: msg += f" in {category}"
+                
                 return jsonify({
-                    'success': True,
-                    'intent': 'QUERY',
-                    'message': f"No expenses {scope_label.lower()}"
+                    'success': True, 
+                    'intent': 'QUERY', 
+                    'message': msg
                 }), 200
 
             total = sum(e.amount for e in expenses)
 
-            # Specific category
-            if query_category:
-                cat_expenses = [e for e in expenses if e.category.lower() == query_category.lower()]
-                if cat_expenses:
-                    cat_total = sum(e.amount for e in cat_expenses)
-                    return jsonify({
-                        'success': True,
-                        'intent': 'QUERY',
-                        'message': f"{query_category} ({scope_label}): ₹{cat_total:.2f}"
-                    }), 200
-                else:
-                    return jsonify({
-                        'success': True,
-                        'intent': 'QUERY',
-                        'message': f"No {query_category} expenses {scope_label.lower()}"
-                    }), 200
+            # Formulate Response
+            msg = f"🔍 **Found {len(expenses)} expenses**"
+            if search_term:
+                msg += f" matching '{search_term}'"
+            elif category:
+                msg += f" in {category}"
+            
+            msg += f":\n**Total: ₹{total:.2f}**\n\n"
 
-            # Breakdown by category
-            categories = {}
-            for e in expenses:
-                categories[e.category] = categories.get(e.category, 0) + e.amount
+            # Limit list to top 5 to avoid flooding chat
+            for e in expenses[:5]:
+                # Format: "06 Feb: ₹500 (Burger King)"
+                desc = f"({e.description})" if e.description else ""
+                msg += f"• {e.date.strftime('%d %b')}: ₹{e.amount} {desc}\n"
 
-            msg = f"{scope_label}: ₹{total:.2f} ({len(expenses)} expenses)\n\n"
-            for cat, amt in sorted(categories.items(), key=lambda x: x[1], reverse=True):
-                msg += f"• {cat}: ₹{amt:.2f}\n"
+            if len(expenses) > 5:
+                msg += f"...and {len(expenses)-5} more."
 
             return jsonify({
                 'success': True,
@@ -542,9 +542,9 @@ def chat_with_ai():
         elif intent == "HELP":
             help_text = """Examples:
 • "Spent 500 on food" → Add
-• "This month total?" → Query
-• "Food expenses?" → Category
-• "Help" → This"""
+• "How much on Uber?" → Search
+• "Total this month?" → Query
+• "Change it to 600" → Edit (Context)"""
             
             return jsonify({
                 'success': True,
@@ -557,13 +557,11 @@ def chat_with_ai():
             return jsonify({
                 'success': True,
                 'intent': 'UNKNOWN',
-                'message': "Try: 'Spent X on Y' or 'How much this month?'"
+                'message': result.get("response", "I'm not sure I understood that.")
             }), 200
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
 @api_bp.route('/chat/confirm', methods=['POST'])
 def confirm_expense():
     """Save expense"""

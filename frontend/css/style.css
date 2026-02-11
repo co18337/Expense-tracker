@@ -1078,3 +1078,171 @@ body {
     margin-bottom: 5px;
     line-height: 1;
 }
+
+.fas {
+    color: white;
+}
+
+
+/* =========================================
+   PHASE 2.1: NEON FILTER BAR
+   ========================================= */
+
+/* The Filter Container */
+.filter-bar {
+    background: rgba(26, 31, 46, 0.6);
+    /* Semi-transparent dark */
+    border: 1px solid #00D4FF;
+    /* Neon Cyan Border */
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+    /* Slight Glow */
+    backdrop-filter: blur(5px);
+    /* Blur background behind it */
+}
+
+/* Labels */
+.filter-bar label {
+    color: #00D4FF;
+    /* Cyan text for labels */
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Inputs & Dropdowns (Dark Theme) */
+.filter-bar .form-control,
+.filter-bar .form-select {
+    background-color: #0F141F !important;
+    /* Very dark background */
+    border: 1px solid #2C3E50;
+    color: #E2E8F0 !important;
+    /* White text */
+    border-radius: 8px;
+}
+
+/* Input Focus State (Glow) */
+.filter-bar .form-control:focus,
+.filter-bar .form-select:focus {
+    background-color: #0F141F !important;
+    border-color: #00D4FF;
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+    color: #fff !important;
+}
+
+/* Fix the Date Picker Calendar Icon (Make it white) */
+.filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+/* Apply Button */
+#btnApplySearch {
+    background: linear-gradient(135deg, #00D4FF 0%, #00a8cc 100%);
+    border: none;
+    color: #000;
+    font-weight: 700;
+    margin-top: 24px;
+    /* Align with inputs */
+    height: 38px;
+    box-shadow: 0 4px 10px rgba(0, 212, 255, 0.3);
+}
+
+#btnApplySearch:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 212, 255, 0.5);
+}
+
+/* Close Button (Red Neon) */
+#btnToggleSearch.btn-outline-danger {
+    color: #FF6B6B;
+    border-color: #FF6B6B;
+}
+
+#btnToggleSearch.btn-outline-danger:hover {
+    background-color: #FF6B6B;
+    color: white;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.4);
+}
+
+/* =========================================
+   PHASE 2.1: COMPACT FIXES (Shrink Fonts & Padding)
+   ========================================= */
+
+/* 1. Filter Bar - Make it Slimmer */
+.filter-bar {
+    padding: 12px 16px !important;
+    /* Reduce padding */
+}
+
+.filter-bar label {
+    font-size: 0.75rem !important;
+    /* Smaller label text */
+    margin-bottom: 2px !important;
+}
+
+.filter-bar .form-control,
+.filter-bar .form-select {
+    height: 32px !important;
+    /* Force slim height */
+    font-size: 0.85rem !important;
+    /* Smaller text inside input */
+    padding: 4px 8px !important;
+}
+
+#btnApplySearch {
+    height: 32px !important;
+    /* Match input height */
+    font-size: 0.85rem !important;
+    margin-top: 19px !important;
+    /* Align strictly with inputs */
+    line-height: 1 !important;
+}
+
+/* 2. Transaction Cards (The Tiles) - Prevent Huge Fonts */
+#searchResultsList .transaction-card,
+#transactionsList .transaction-card {
+    padding: 10px 14px !important;
+    /* Tighter padding */
+    margin-bottom: 8px !important;
+}
+
+/* Force specific font sizes for the tile content */
+.transaction-card h6 {
+    font-size: 0.75rem !important;
+    /* Category Name */
+    line-height: 1.2;
+}
+
+.transaction-card small {
+    font-size: 0.5rem !important;
+    /* Date */
+}
+
+.transaction-card p {
+    font-size: 0.75rem !important;
+    /* Description */
+    line-height: 1.2;
+}
+
+.transaction-amount .fw-bold {
+    font-size: 1rem !important;
+    /* Amount (e.g. ₹500) */
+}
+
+.transaction-amount .btn {
+    padding: 2px 6px !important;
+    /* Delete button size */
+    font-size: 0.7rem !important;
+}
+
+#historyTitle {
+    font-size: 1.1rem !important;
+}
+
+#btnToggleSearch {
+    font-size: 0.85rem !important;
+}

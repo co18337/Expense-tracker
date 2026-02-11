@@ -160,7 +160,7 @@
                 </section>
 
                 <!-- ================= TRANSACTIONS ================= -->
-                <section class="page-section" id="transactions">
+                <!-- <section class="page-section" id="transactions">
 
                     <div id="monthsView">
                         <h3>Months</h3>
@@ -179,6 +179,70 @@
                         <h3 id="selectedDateTitle"></h3>
                         <p id="selectedDateTotal"></p>
                         <div id="transactionsGrid" class="transactions-grid"></div>
+                    </div>
+
+                </section> -->
+                <section class="page-section" id="transactions">
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 id="historyTitle">Expense History</h2>
+                        <button id="btnToggleSearch" class="btn btn-outline-cyan btn-sm">
+                            <i class="fas fa-search"></i> Advanced Search
+                        </button>
+                    </div>
+
+                    <div id="defaultView">
+                        <div id="monthsGrid" class="months-grid"></div>
+
+                        <div id="daysView" style="display:none; margin-top: 5px;">
+                            <button id="backToMonths" class="btn-back-page mb-3" style="padding: auto;">
+                                <i class="fas"></i> Back to Months
+                            </button>
+                            <h3 id="selectedMonthTitle" class="text-cyan mb-3"></h3>
+                            <div id="daysGrid" class="days-grid"></div>
+                        </div>
+
+                        <div id="transactionsView" style="display:none;margin-top: 5px;">
+                            <button id="backToDays" class="btn-back-page mb-3">
+                                <i class="fas"></i> Back to Days
+                            </button>
+                            <h3 id="selectedDateTitle" class="text-cyan mb-3"></h3>
+                            <div id="transactionsGrid" class="transactions-grid"></div>
+                        </div>
+                    </div>
+
+                    <div id="filterView" class="d-none">
+                        <div class="filter-bar mb-4">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-3">
+                                    <label class="small text-muted">Category</label>
+                                    <select id="searchCategory" class="form-select form-select-sm">
+                                        <option value="ALL">All Categories</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="small text-muted">From</label>
+                                    <input type="date" id="searchDateFrom" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="small text-muted">To</label>
+                                    <input type="date" id="searchDateTo" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6 col-md-3 d-flex align-items-end">
+                                    <button id="btnApplySearch" class="btn btn-sm btn-cyan w-100"
+                                        style="background: var(--card-bg);">
+                                        <i class="fas fa-filter"></i> Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="text-muted">Results</h5>
+                            <span class="badge bg-secondary" id="searchTotal">Total: ₹0</span>
+                        </div>
+                        <div id="searchResultsList" class="transactions-grid">
+                        </div>
                     </div>
 
                 </section>
