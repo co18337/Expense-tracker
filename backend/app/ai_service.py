@@ -177,14 +177,14 @@ Return ONLY raw JSON:
     def suggest_expense_summary(self):
         today = date.today()
         today_exps = Expense.query.filter(Expense.date == today).all()
-        if not today_exps: return "No expenses today yet 💰"
+        if not today_exps: return "No expenses today yet "
         
         total = sum(e.amount for e in today_exps)
         count = len(today_exps)
         categories = {}
         for exp in today_exps: categories.setdefault(exp.category, []).append(exp)
         
-        summary = f"📊 Today:\nTotal: ₹{total:.2f} ({count} expenses)\n\n"
+        summary = f" Today:\nTotal: ₹{total:.2f} ({count} expenses)\n\n"
         for cat, exps in categories.items():
             cat_total = sum(e.amount for e in exps)
             summary += f"• {cat}: ₹{cat_total:.2f}\n"
