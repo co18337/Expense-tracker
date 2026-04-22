@@ -39,14 +39,14 @@ body {
 
 /* ---------------- NAVBAR ---------------- */
 .navbar {
-    height: 60px;
+    height: 70px;
     background: linear-gradient(90deg, rgba(15, 20, 25, .96), rgba(26, 31, 46, .96)) !important;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
 }
 
 .navbar-brand {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 800;
     color: var(--primary) !important;
 }

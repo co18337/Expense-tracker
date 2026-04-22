@@ -17,14 +17,16 @@
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-dark bg-gradient sticky-top">
-        <div class="container-fluid">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
             <span class="navbar-brand fw-bold">
                 <i class="fas fa-wallet me-2"></i>ExpenseAI
             </span>
-            <span class="badge bg-cyan text-dark fw-bold" id="navTotal">₹0</span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-cyan text-dark fw-bold" id="navTotal">₹0</span>
+                <span id="userEmail" class="text-secondary small"></span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm">Logout</button>
+            </div>
         </div>
-        <span id="userEmail"></span>
-        <button id="logoutBtn" class="btn btn-outline-danger btn-sm">Logout</button>
     </nav>
 
     <div class="container-fluid px-4 py-3">
