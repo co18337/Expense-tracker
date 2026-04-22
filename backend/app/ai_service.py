@@ -1,6 +1,7 @@
 """
 AI Service - Phase 2.2: Smart Search & Context Memory
 """
+
 import os
 import json
 from datetime import datetime, date, timedelta
@@ -8,6 +9,7 @@ from groq import Groq
 from app.models import db, Expense
 
 client = Groq(api_key=os.getenv("GROK_API_KEY"))
+
 
 class ExpenseExtractor:
     def __init__(self):
@@ -18,7 +20,14 @@ class ExpenseExtractor:
         Classify intent, extract data, keywords, and use history.
         """
         if not known_categories:
-            known_categories = ["Food", "Transport", "Utilities", "Entertainment", "Health", "Shopping"]
+            known_categories = [
+                "Food",
+                "Transport",
+                "Utilities",
+                "Entertainment",
+                "Health",
+                "Shopping",
+            ]
 
         cat_str = ", ".join(known_categories)
         today_str = date.today().isoformat()
@@ -27,8 +36,8 @@ class ExpenseExtractor:
         history_text = ""
         if history:
             history_text = "RECENT CONVERSATION:\n"
-            for msg in history[-5:]: # Look at last 5 messages
-                role = "User" if msg.get('role') == 'user' else "AI"
+            for msg in history[-5:]:  # Look at last 5 messages
+                role = "User" if msg.get("role") == "user" else "AI"
                 history_text += f"{role}: {msg.get('content')}\n"
 
         system_prompt = f"""You are ExpenseAI. Classify intent and extract data.
@@ -82,16 +91,165 @@ Return ONLY raw JSON:
                 content = content.replace("```json", "").replace("```", "").strip()
 
             result = json.loads(content)
-            
+
             # Default date for ADD
-            if result.get("intent") == "ADD_EXPENSE" and not result.get("data", {}).get("date"):
+            if result.get("intent") == "ADD_EXPENSE" and not result.get("data", {}).get(
+                "date"
+            ):
                 result["data"]["date"] = today_str
 
+            print(
+                f"AI Response - Intent: {result.get('intent')}, Data: {result.get('data')}"
+            )
             return result
 
         except Exception as e:
             print(f"AI Service Error: {e}")
-            return {"intent": "UNKNOWN", "response": "I didn't catch that."}
+            # Fallback: Try simple keyword matching if AI fails
+            user_msg_lower = user_message.lower()
+
+            # Smart category mapping based on keywords
+            category_keywords = {
+                "Food": [
+                    "food",
+                    "lunch",
+                    "breakfast",
+                    "dinner",
+                    "eat",
+                    "restaurant",
+                    "pizza",
+                    "burger",
+                    "coffee",
+                    "tea",
+                    "snack",
+                    "meal",
+                    "milk",
+                    "dairy",
+                    "grocery",
+                    "groceries",
+                ],
+                "Transport": [
+                    "uber",
+                    "cab",
+                    "taxi",
+                    "bus",
+                    "train",
+                    "fuel",
+                    "petrol",
+                    "metro",
+                    "auto",
+                    "bike",
+                    "car",
+                    "ride",
+                ],
+                "Entertainment": [
+                    "movie",
+                    "cinema",
+                    "game",
+                    "concert",
+                    "party",
+                    "club",
+                    "play",
+                    "show",
+                    "music",
+                    "ticket",
+                ],
+                "Utilities": [
+                    "electric",
+                    "water",
+                    "bill",
+                    "internet",
+                    "phone",
+                    "gas",
+                    "utility",
+                ],
+                "Health": [
+                    "doctor",
+                    "medicine",
+                    "hospital",
+                    "clinic",
+                    "pharmacy",
+                    "health",
+                    "dental",
+                    "checkup",
+                ],
+                "Shopping": [
+                    "clothes",
+                    "shoes",
+                    "dress",
+                    "shirt",
+                    "pants",
+                    "shop",
+                    "mall",
+                    "buy",
+                    "purchase",
+                    "book",
+                    "gift",
+                ],
+                "Education": [
+                    "exam",
+                    "fee",
+                    "tuition",
+                    "course",
+                    "class",
+                    "university",
+                    "school",
+                    "college",
+                    "book",
+                    "study",
+                    "notebook",
+                ],
+            }
+
+            # Check for expense keywords
+            if any(
+                word in user_msg_lower
+                for word in ["spent", "spend", "spent on", "on", "cost", "paid"]
+            ):
+                # Try to extract amount
+                import re
+
+                amount_match = re.search(r"\d+(?:\.\d+)?", user_msg_lower)
+                if amount_match:
+                    amount = float(amount_match.group())
+
+                    # First try to match predefined categories
+                    detected_category = None
+                    for cat in known_categories:
+                        if cat.lower() in user_msg_lower:
+                            detected_category = cat
+                            break
+
+                    # If no predefined category match, try smart keyword matching
+                    if not detected_category:
+                        for category, keywords in category_keywords.items():
+                            for keyword in keywords:
+                                if keyword in user_msg_lower:
+                                    detected_category = category
+                                    break
+                            if detected_category:
+                                break
+
+                    # Default to Miscellaneous if no category found
+                    if not detected_category:
+                        detected_category = "Miscellaneous"
+
+                    return {
+                        "intent": "ADD_EXPENSE",
+                        "data": {
+                            "amount": amount,
+                            "category": detected_category,
+                            "description": user_message,
+                            "date": today_str,
+                        },
+                        "is_complete": True,
+                        "response": f"Got it! ₹{amount} on {detected_category}?",
+                    }
+
+            return {
+                "intent": "UNKNOWN",
+                "response": "I didn't catch that. Try 'I spent 500 on food'",
+            }
 
     def search_expenses(self, scope, category=None, search_term=None):
         """
@@ -119,35 +277,50 @@ Return ONLY raw JSON:
         # 3. Apply Keyword (Wildcard Fix)
         if search_term:
             # Replaces spaces with % to find "Burger King" AND "BurgerKing"
-            flexible_term = search_term.replace(' ', '%')
-            query = query.filter(Expense.description.ilike(f'%{flexible_term}%'))
+            flexible_term = search_term.replace(" ", "%")
+            query = query.filter(Expense.description.ilike(f"%{flexible_term}%"))
 
         return query.all()
 
     def get_expenses_by_scope(self, scope):
         today = date.today()
         all_expenses = Expense.query.all()
-        
+
         if scope == "TODAY":
             return [e for e in all_expenses if e.date == today]
         elif scope == "THIS_MONTH":
-            return [e for e in all_expenses if e.date.year == today.year and e.date.month == today.month]
+            return [
+                e
+                for e in all_expenses
+                if e.date.year == today.year and e.date.month == today.month
+            ]
         elif scope == "LAST_MONTH":
             first_of_this_month = today.replace(day=1)
             last_month_end = first_of_this_month - timedelta(days=1)
-            return [e for e in all_expenses if e.date.year == last_month_end.year and e.date.month == last_month_end.month]
+            return [
+                e
+                for e in all_expenses
+                if e.date.year == last_month_end.year
+                and e.date.month == last_month_end.month
+            ]
         elif scope == "TOTAL":
             return all_expenses
         else:
             return []
 
     def format_scope_label(self, scope):
-        labels = {"TODAY": "Today", "THIS_MONTH": "This Month", "LAST_MONTH": "Last Month", "TOTAL": "All Time"}
+        labels = {
+            "TODAY": "Today",
+            "THIS_MONTH": "This Month",
+            "LAST_MONTH": "Last Month",
+            "TOTAL": "All Time",
+        }
         return labels.get(scope, scope)
 
     def detect_recurring(self, user_id=None):
         expenses = Expense.query.all()
-        if len(expenses) < 3: return []
+        if len(expenses) < 3:
+            return []
 
         recurring_patterns = {}
         for exp in expenses:
@@ -155,40 +328,55 @@ Return ONLY raw JSON:
 
         results = []
         for category, exps in recurring_patterns.items():
-            if len(exps) < 2: continue
+            if len(exps) < 2:
+                continue
             amounts = [e.amount for e in exps]
             avg_amount = sum(amounts) / len(amounts)
             similar = [e for e in exps if abs(e.amount - avg_amount) < avg_amount * 0.1]
             if len(similar) >= 2:
                 from collections import Counter
+
                 weekdays = [e.date.weekday() for e in similar]
                 common_day, count = Counter(weekdays).most_common(1)[0]
                 if count >= 2:
-                    day_name = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][common_day]
-                    results.append({
-                        "category": category,
-                        "frequency": "weekly",
-                        "day": day_name,
-                        "average_amount": round(avg_amount, 2),
-                        "confidence": round((len(similar) / len(exps)) * 100, 2),
-                    })
+                    day_name = [
+                        "Monday",
+                        "Tuesday",
+                        "Wednesday",
+                        "Thursday",
+                        "Friday",
+                        "Saturday",
+                        "Sunday",
+                    ][common_day]
+                    results.append(
+                        {
+                            "category": category,
+                            "frequency": "weekly",
+                            "day": day_name,
+                            "average_amount": round(avg_amount, 2),
+                            "confidence": round((len(similar) / len(exps)) * 100, 2),
+                        }
+                    )
         return results
 
     def suggest_expense_summary(self):
         today = date.today()
         today_exps = Expense.query.filter(Expense.date == today).all()
-        if not today_exps: return "No expenses today yet "
-        
+        if not today_exps:
+            return "No expenses today yet "
+
         total = sum(e.amount for e in today_exps)
         count = len(today_exps)
         categories = {}
-        for exp in today_exps: categories.setdefault(exp.category, []).append(exp)
-        
+        for exp in today_exps:
+            categories.setdefault(exp.category, []).append(exp)
+
         summary = f" Today:\nTotal: ₹{total:.2f} ({count} expenses)\n\n"
         for cat, exps in categories.items():
             cat_total = sum(e.amount for e in exps)
             summary += f"• {cat}: ₹{cat_total:.2f}\n"
         return summary
+
 
 def create_expense_extractor():
     return ExpenseExtractor()

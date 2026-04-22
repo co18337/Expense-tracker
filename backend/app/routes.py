@@ -535,9 +535,11 @@ from app.ai_service import create_expense_extractor
 
 
 @api_bp.route("/chat", methods=["POST"])
+@login_required
 def chat_with_ai():
     """Simple chat endpoint with History, Smart Search & Duplicate Detection"""
     try:
+        user_id = g.current_user["user_id"]
         data = request.get_json()
         message_raw = data.get("message", "").strip()
         history = data.get("history", [])
@@ -545,8 +547,13 @@ def chat_with_ai():
         if not message_raw:
             return jsonify({"success": False, "message": "Say something!"}), 400
 
-        # Categories
-        existing_cats = db.session.query(Expense.category).distinct().all()
+        # Categories - only for this user
+        existing_cats = (
+            db.session.query(Expense.category)
+            .filter_by(user_id=user_id)
+            .distinct()
+            .all()
+        )
         known_categories = [row[0] for row in existing_cats]
 
         # AI Process
@@ -575,14 +582,17 @@ def chat_with_ai():
                     200,
                 )
 
-            # ✅ ROBUST DUPLICATE CHECK (ID Based)
+            # ✅ ROBUST DUPLICATE CHECK (ID Based) - for this user only
             try:
                 # 1. Parse date
                 ex_date = datetime.strptime(extracted_data["date"], "%Y-%m-%d").date()
 
-                # 2. Find the VERY LAST expense added to the DB
-                # We don't rely on 'created_at' timestamp anymore, just the ID.
-                last_entry = Expense.query.order_by(Expense.id.desc()).first()
+                # 2. Find the VERY LAST expense added by this user
+                last_entry = (
+                    Expense.query.filter_by(user_id=user_id)
+                    .order_by(Expense.id.desc())
+                    .first()
+                )
 
                 # 3. Compare
                 if (
@@ -688,9 +698,11 @@ def chat_with_ai():
 
 
 @api_bp.route("/chat/confirm", methods=["POST"])
+@login_required
 def confirm_expense():
     """Save expense"""
     try:
+        user_id = g.current_user["user_id"]
         data = request.get_json()
 
         if not all(k in data for k in ["amount", "category", "date"]):
@@ -703,6 +715,7 @@ def confirm_expense():
             category=data["category"],
             description=data.get("description", ""),
             date=expense_date,
+            user_id=user_id,
         )
 
         db.session.add(new_expense)
@@ -721,6 +734,7 @@ def confirm_expense():
 
     except Exception as e:
         db.session.rollback()
+        print(f"Chat confirm error: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
 
 

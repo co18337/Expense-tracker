@@ -893,21 +893,37 @@ async function addExpense(e) {
 
     try {
         showLoading(true);
-        await apiCall('POST', '/expenses', data);
+        const response = await apiCall('POST', '/expenses', data);
+        console.log('Expense added:', response);
         toast('Expense added!', 'success');
 
         if (DOM.form) DOM.form.reset();
 
         // Reset UI
-        otherContainer.classList.add('d-none');
+        const otherContainer = document.getElementById('otherCategoryContainer');
+        if (otherContainer) {
+            otherContainer.classList.add('d-none');
+        }
         select.value = ""; // Reset dropdown
 
         if (DOM.dateInput) DOM.dateInput.valueAsDate = new Date();
 
-        await loadExpenses(); // This will auto-refresh the dropdown with the new category!
-        updateDashboard();
+        // Reload expenses and refresh everything
+        await loadExpenses();
+        updateNav();
+        updateStats();
+        renderCategoryChart();
+        renderMonthlyChart();
+
+        // Also refresh transactions view if active
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav && activeNav.getAttribute('data-page') === 'transactions') {
+            renderTransactions();
+        }
+
         showLoading(false);
     } catch (e) {
+        console.error('Add expense error:', e);
         showLoading(false);
     }
 }
@@ -1146,15 +1162,18 @@ async function handleChatSubmit(e) {
 
     try {
         // 4. API Call (NOW SENDING HISTORY)
+        console.log('Sending chat message:', message);
         const result = await apiCall('POST', '/chat', {
             message: message,
             history: chatHistory // <--- Pass context to backend
         });
+        console.log('Chat response:', result);
 
         // 5. Remove Indicator
         removeTypingIndicator();
 
         if (!result.success) {
+            console.error('Chat failed:', result.message);
             addChatMessage(result.message || 'Error processing request', 'ai', true);
             return;
         }
@@ -1600,8 +1619,20 @@ async function handleConfirmation(action, btnElement) {
         showLoading(false);
         addChatMessage(result.message, 'ai');
         pendingExpense = null;
+
+        // Reload expenses and refresh everything
+        console.log('Chat expense confirmed:', result.data);
         await loadExpenses();
-        updateDashboard();
+        updateNav();
+        updateStats();
+        renderCategoryChart();
+        renderMonthlyChart();
+
+        // Also refresh transactions view if active
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav && activeNav.getAttribute('data-page') === 'transactions') {
+            renderTransactions();
+        }
 
     } catch (err) {
         // 4. ROLLBACK ON FAILURE
