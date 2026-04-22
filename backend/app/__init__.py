@@ -1,85 +1,75 @@
 """
-Flask Application Initialization
-This file sets up the Flask app and database connection
+Flask Application Factory
+Phase 0: Initialize Flask app with database and authentication
 """
 
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from app.models import db
+from flask_migrate import Migrate
 from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
 load_dotenv()
 
+# Initialize database
+db = SQLAlchemy()
+
+# Initialize migrations
+migrate = Migrate()
 
 
 def create_app():
     """
-    What is this function?
-    Creates and configures the Flask application.
+    Application factory - creates and configures Flask app
     
-    Why a function instead of just creating the app directly?
-    - Allows creating multiple app instances (useful for testing)
-    - Keeps configuration in one place
-    - Professional best practice
-    
-    Returns: A configured Flask application
+    Returns:
+        Flask: Configured Flask application
     """
-    
-    # Create Flask app instance
-    # __name__ tells Flask where this app is located
     app = Flask(__name__)
     
-    # ===== Configuration =====
+    # ===== CONFIGURATION =====
     
-    # SQLALCHEMY_DATABASE_URI
-    # What: Tells SQLAlchemy where the database file is located
-    # Why: SQLAlchemy needs to know what database to connect to
-    # 'sqlite:///expense_tracker.db' means:
-    #   - sqlite: Use SQLite (not PostgreSQL or MySQL)
-    #   - :/// Three slashes because it's a local file path
-    #   - expense_tracker.db: Name of the database file
-    # This file will be created automatically in the backend folder
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expense_tracker.db'
-    
-    # SQLALCHEMY_TRACK_MODIFICATIONS
-    # What: Tells SQLAlchemy whether to track object modifications
-    # Why: False is better for performance (we don't need this feature for our app)
+    # Database configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+        'DATABASE_URL',
+        'sqlite:////home/prince/Documents/My Projects/expense-tracker/backend/instance/expense_tracker.db'
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
-    # ===== Database Initialization =====
+    # JWT Configuration
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    app.config['JWT_SECRET_KEY'] = app.config['SECRET_KEY']
     
-    # Initialize the database with this app
-    # This connects our db object (from models.py) to this Flask app
+    # CORS Configuration
+    app.config['CORS_HEADERS'] = 'Content-Type'
+    
+    # ===== INITIALIZE EXTENSIONS =====
+    
+    # Initialize database with app
     db.init_app(app)
     
-    # ===== CORS Configuration =====
+    # Initialize migrations with app
+    migrate.init_app(app, db)
     
-    # CORS = Cross-Origin Resource Sharing
-    # What: Allows your frontend (browser) to make requests to your backend
-    # Why: Without this, browsers block requests between different URLs
-    # In our case:
-    #   - Frontend: http://localhost:3000 or file://index.html
-    #   - Backend: http://localhost:5000
-    # These are different "origins", so without CORS, communication fails
+    # Initialize CORS
     CORS(app)
     
-    # ===== Database Table Creation =====
+    # ===== IMPORT MODELS (IMPORTANT for migrations!) =====
+    # These imports MUST happen here so Alembic can see them
+    from app.models import User, Expense
     
-    # Create app context
-    # What: A context tells Flask what app we're working with
-    # Why: Some operations (like creating tables) need to know which app to use
-    with app.app_context():
-        # Create all tables defined in models.py
-        # If tables don't exist, create them
-        # If they already exist, do nothing (won't overwrite)
-        db.create_all()
+    # ===== REGISTER BLUEPRINTS =====
     
-    # ===== Register Routes =====
-    
-    # Import routes after db initialization to avoid circular imports
-    # What is circular import? When File A imports File B, and File B imports File A
-    # Why avoid it? Creates infinite loop that crashes the app
-    # By importing routes here (after db is ready), we avoid this problem
+    # Import and register blueprints AFTER db initialization
     from app.routes import api_bp
+    from app.auth import auth_bp
+    
     app.register_blueprint(api_bp)
+    app.register_blueprint(auth_bp)
+    
+    print("✅ Flask app initialized successfully")
+    print(f"📊 Database: {app.config['SQLALCHEMY_DATABASE_URI']}")
     
     return app

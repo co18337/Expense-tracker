@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseAI - Login</title>
+    
+    <!-- Bootstrap for responsive design -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom login styles -->
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body class="dark-theme">
+
+<!-- Main Container -->
+<div class="login-wrapper">
+    <div class="login-container">
+        
+        <!-- Logo/Brand Header -->
+        <div class="login-brand">
+            <i class="fas fa-wallet"></i>
+            <h1>ExpenseAI</h1>
+            <p>Smart Expense Tracking with AI</p>
+        </div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            
+            <!-- ===== LOGIN FORM ===== -->
+            <div id="loginForm" class="auth-form active">
+                <h2>Welcome Back</h2>
+                <p class="form-subtitle">Login to your account</p>
+                
+                <form id="loginFormElement" class="auth-input-group">
+                    <!-- Email Input -->
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input 
+                                type="email" 
+                                id="loginEmail" 
+                                class="form-control"
+                                placeholder="your-email@example.com"
+                                required
+                            >
+                        </div>
+                        <small id="loginEmailError" class="error-text"></small>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input 
+                                type="password" 
+                                id="loginPassword" 
+                                class="form-control"
+                                placeholder="••••••••"
+                                required
+                            >
+                            <button 
+                                type="button" 
+                                class="toggle-password"
+                                onclick="togglePasswordVisibility('loginPassword')"
+                            >
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <small id="loginPasswordError" class="error-text"></small>
+                    </div>
+
+                    <!-- Remember Me Checkbox -->
+                    <div class="form-check remember-me">
+                        <input 
+                            type="checkbox" 
+                            id="rememberMe" 
+                            class="form-check-input"
+                        >
+                        <label class="form-check-label" for="rememberMe">
+                            Remember me for 30 days
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button 
+                        type="submit" 
+                        class="btn-submit btn-primary w-100"
+                        id="loginBtn"
+                    >
+                        <span class="btn-text">Login</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+
+                <!-- Error Message -->
+                <div id="loginError" class="error-alert d-none">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="loginErrorText"></span>
+                </div>
+
+                <!-- Links -->
+                <div class="form-links">
+                    <a href="#" onclick="showForgotPassword(event)" class="forgot-password">
+                        Forgot password?
+                    </a>
+                    <span class="divider">•</span>
+                    <a href="#" onclick="switchToRegister(event)" class="register-link">
+                        Create account
+                    </a>
+                </div>
+            </div>
+
+            <!-- ===== REGISTER FORM ===== -->
+            <div id="registerForm" class="auth-form">
+                <h2>Create Account</h2>
+                <p class="form-subtitle">Join ExpenseAI today</p>
+                
+                <form id="registerFormElement" class="auth-input-group">
+                    <!-- Email Input -->
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input 
+                                type="email" 
+                                id="registerEmail" 
+                                class="form-control"
+                                placeholder="your-email@example.com"
+                                required
+                            >
+                        </div>
+                        <small id="registerEmailError" class="error-text"></small>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input 
+                                type="password" 
+                                id="registerPassword" 
+                                class="form-control"
+                                placeholder="••••••••"
+                                required
+                            >
+                            <button 
+                                type="button" 
+                                class="toggle-password"
+                                onclick="togglePasswordVisibility('registerPassword')"
+                            >
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <small class="password-hint">
+                            Min 8 chars, uppercase, lowercase, and number
+                        </small>
+                        <small id="registerPasswordError" class="error-text"></small>
+                    </div>
+
+                    <!-- Confirm Password Input -->
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input 
+                                type="password" 
+                                id="confirmPassword" 
+                                class="form-control"
+                                placeholder="••••••••"
+                                required
+                            >
+                            <button 
+                                type="button" 
+                                class="toggle-password"
+                                onclick="togglePasswordVisibility('confirmPassword')"
+                            >
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <small id="confirmPasswordError" class="error-text"></small>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button 
+                        type="submit" 
+                        class="btn-submit btn-primary w-100"
+                        id="registerBtn"
+                    >
+                        <span class="btn-text">Create Account</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+
+                <!-- Error Message -->
+                <div id="registerError" class="error-alert d-none">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="registerErrorText"></span>
+                </div>
+
+                <!-- Links -->
+                <div class="form-links">
+                    <span>Already have account?</span>
+                    <a href="#" onclick="switchToLogin(event)" class="login-link">
+                        Login here
+                    </a>
+                </div>
+            </div>
+
+            <!-- ===== FORGOT PASSWORD FORM ===== -->
+            <div id="forgotPasswordForm" class="auth-form">
+                <h2>Reset Password</h2>
+                <p class="form-subtitle">Enter your email to receive reset link</p>
+                
+                <form id="forgotPasswordFormElement" class="auth-input-group">
+                    <!-- Email Input -->
+                    <div class="form-group">
+                        <label for="forgotEmail">Email</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input 
+                                type="email" 
+                                id="forgotEmail" 
+                                class="form-control"
+                                placeholder="your-email@example.com"
+                                required
+                            >
+                        </div>
+                        <small id="forgotEmailError" class="error-text"></small>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button 
+                        type="submit" 
+                        class="btn-submit btn-primary w-100"
+                        id="forgotBtn"
+                    >
+                        <span class="btn-text">Send Reset Link</span>
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </form>
+
+                <!-- Message -->
+                <div id="forgotMessage" class="success-alert d-none">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Check your email for password reset link</span>
+                </div>
+
+                <div id="forgotError" class="error-alert d-none">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="forgotErrorText"></span>
+                </div>
+
+                <!-- Links -->
+                <div class="form-links">
+                    <a href="#" onclick="switchToLogin(event)" class="back-link">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="login-footer">
+            <p>ExpenseAI © 2025 | Secure Expense Tracking</p>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner (Global) -->
+<div id="globalLoadingSpinner" class="global-spinner d-none">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/login-page.js"></script>
+
+</body>
+</html>

@@ -43,12 +43,64 @@ const DOM = {
     loadingSpinner: document.getElementById('loadingSpinner')
 };
 
+//ADDED FOR LOGIN========================
+// At the very top, add:
+// const apiClient = api;  // Use global api wrapper instead of fetch
+
+// Change all fetch calls to use api wrapper:
+// OLD: fetch(`${API}/expenses`)
+// NEW: api.get('/expenses')
+
+// At the very start of DOMContentLoaded, add:
+// Check if user is logged in
+if (!auth.isLoggedIn()) {
+    window.location.href = 'login.html';
+    // return;
+}
+
+// In navbar, display user email:
+const user = auth.getCurrentUser();
+if (user) {
+    document.getElementById('userEmail').textContent = user.email;
+}
+
+// Add logout button handler:
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    auth.logout();
+    window.location.href = 'login.html';
+});
+//ADDED FOR LOGIN========================
+
+
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if user is logged in
+    if (!auth.isLoggedIn()) {
+        console.log('[App] User not logged in, redirecting to login');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Display user email in navbar
+    const user = auth.getCurrentUser();
+    if (user && user.email) {
+        document.getElementById('userEmail').textContent = user.email;
+    }
+
     showLoading(true);
     await loadExpenses(); // Load FIRST
     showLoading(false);
     initApp();
+
+    // Setup logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            auth.logout();
+            window.location.href = '/login.html';
+        });
+    }
+
     // Animate the welcome message
     const initialMsg = document.querySelector('.ai-message');
     if (initialMsg) {
@@ -775,6 +827,13 @@ async function apiCall(method, endpoint, data = null) {
         method,
         headers: { 'Content-Type': 'application/json' }
     };
+
+    // Add Authorization header if token exists
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
+
     if (data) options.body = JSON.stringify(data);
 
     try {
